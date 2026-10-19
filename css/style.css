@@ -1,0 +1,79 @@
+/* Base reset (the artifact host supplied this; the standalone page needs its own). */
+*,*::before,*::after{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+/* Layout: one narrow app column, like a driving-school workbook page; the play field is the hero, rules text sits beneath it. */
+:root{
+  --ground:#e9ecea; --paper:#ffffff; --ink:#1b2126; --muted:#59636a; --edge:#d3d8d6;
+  --accent:#1f4fa0; --accent-ink:#ffffff; --ok:#1d7349; --ok-bg:#e3f2ea; --bad:#a8261d; --bad-bg:#f8e5e2;
+  --field:#cdd6cc; --chip:#eef1f5;
+  --display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+  --body:"BIZ UDPGothic","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --ground:#14181b; --paper:#1d2226; --ink:#e7ebe9; --muted:#9aa4aa; --edge:#30373c;
+  --accent:#5b8fe0; --accent-ink:#0d1726; --ok:#5cc28d; --ok-bg:#16301f; --bad:#ef7b70; --bad-bg:#3a1c19;
+  --field:#25312a; --chip:#262c33; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --ground:#14181b; --paper:#1d2226; --ink:#e7ebe9; --muted:#9aa4aa; --edge:#30373c;
+  --accent:#5b8fe0; --accent-ink:#0d1726; --ok:#5cc28d; --ok-bg:#16301f; --bad:#ef7b70; --bad-bg:#3a1c19;
+  --field:#25312a; --chip:#262c33; color-scheme:dark }
+
+body{background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-direction:column;gap:4px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{font-family:var(--display);font-weight:900;font-size:1.6rem;margin:0;letter-spacing:.01em;text-wrap:balance}
+.chapter{font-size:.85rem;color:var(--muted)}
+.chapter b{font-family:var(--display);color:var(--ink);font-weight:700}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tab{appearance:none;border:1px solid var(--edge);background:var(--paper);color:var(--ink);border-radius:8px;padding:8px 4px;font:inherit;font-size:.8rem;line-height:1.25;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.tab .n{font-family:var(--display);font-weight:900;font-size:1rem}
+.tab .p{font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tab[aria-selected="true"] .p{color:var(--accent-ink);opacity:.85}
+.tab:focus-visible,.btn:focus-visible,.bin:focus-visible,.alt button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.card{background:var(--paper);border:1px solid var(--edge);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.lvl-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.lvl-head h2{font-family:var(--display);font-weight:700;font-size:1.15rem;margin:0}
+.count{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.prompt{margin:0;font-size:1rem}
+.prompt .goal{font-family:var(--display);font-weight:700;background:var(--chip);padding:1px 8px;border-radius:6px;white-space:nowrap}
+.hud{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--chip);border-radius:10px;padding:10px 12px;min-height:56px}
+.hud .lbl{font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.hud .clock{font-family:var(--display);font-weight:900;font-size:1.3rem;font-variant-numeric:tabular-nums}
+.hud .item{display:flex;flex-direction:column;gap:2px}
+.field{width:100%;max-width:100%;aspect-ratio:1/1;display:block;border-radius:10px;touch-action:none;user-select:none;-webkit-user-select:none}
+.feedback{border-radius:10px;padding:12px 14px;font-size:.92rem;display:flex;flex-direction:column;gap:6px}
+.feedback.ok{background:var(--ok-bg);color:var(--ink);border-left:4px solid var(--ok)}
+.feedback.bad{background:var(--bad-bg);color:var(--ink);border-left:4px solid var(--bad)}
+.feedback .verdict{font-family:var(--display);font-weight:900;font-size:1rem}
+.feedback.ok .verdict{color:var(--ok)} .feedback.bad .verdict{color:var(--bad)}
+.feedback .src{font-size:.78rem;color:var(--muted)}
+.row{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.btn{appearance:none;border:1px solid var(--edge);background:var(--paper);color:var(--ink);border-radius:8px;padding:9px 14px;font:inherit;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+.alt{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.alt span{font-size:.78rem;color:var(--muted)}
+.alt button{appearance:none;border:1px solid var(--edge);background:var(--paper);color:var(--ink);border-radius:999px;padding:4px 10px;font:inherit;font-size:.8rem;cursor:pointer}
+/* sort level */
+.stage{display:flex;justify-content:center;align-items:center;min-height:170px;background:var(--chip);border-radius:10px;position:relative}
+.sign-card{touch-action:none;cursor:grab;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:10px;user-select:none;-webkit-user-select:none}
+.sign-card.dragging{cursor:grabbing;position:fixed;z-index:20;background:var(--paper);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.bins{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bin{appearance:none;border:2px dashed var(--edge);background:var(--paper);color:var(--ink);border-radius:10px;padding:10px;font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;min-width:0}
+.bin .jp{font-family:var(--display);font-weight:900;font-size:1.1rem}
+.bin .en{font-size:.78rem;color:var(--muted)}
+.bin.hot{border-style:solid;border-color:var(--accent)}
+.blink{animation:blink 1s steps(1,end) infinite}
+@keyframes blink{50%{opacity:.15}}
+@media (prefers-reduced-motion: reduce){.blink{animation:none}}
+footer{font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+footer a{color:var(--accent)}
+footer ul{margin:0;padding-left:18px}
+.done-banner{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:12px 0}
+.done-banner .big{font-family:var(--display);font-weight:900;font-size:2rem;font-variant-numeric:tabular-nums}
