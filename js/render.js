@@ -2,6 +2,8 @@
 "use strict";
 const $ = (s,el=document)=>el.querySelector(s);
 const NS="http://www.w3.org/2000/svg";
+/* Chapter registry: each levels/chN.js pushes one chapter object. */
+const CHAPTERS=[];
 const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- signs (100x100 viewBox, real-world colours, theme-independent) ---------- */
@@ -99,4 +101,34 @@ function drawCrossing(svg,{stopLine=true,cross=true,westCross=false,peds=false}=
   if(peds)pedestrian(svg,146,203);
   // compass label
   const t=el("text",{x:350,y:350,"text-anchor":"end","font-size":11,fill:"#e8ece9","font-family":"sans-serif"},svg);t.textContent="Japan drives on the left";
+}
+
+/* ---------- extra road users and objects (Chapter 2+) ---------- */
+function vehicleG(parent,x,y,{rot=0,kind="car",color="#f4f7fa"}={}){
+  const g=el("g",{transform:`translate(${x} ${y}) rotate(${rot})`},parent);
+  if(kind==="bus"){
+    el("rect",{x:-17,y:-42,width:34,height:84,rx:6,fill:"#2f8f5b",stroke:"#11161a","stroke-width":2},g);
+    el("rect",{x:-13,y:-38,width:26,height:10,rx:2,fill:"#cfe6ff"},g);
+    for(let i=0;i<4;i++)el("rect",{x:-14,y:-22+i*15,width:28,height:5,fill:"#bfe3cc"},g);
+  }else if(kind==="truck"){
+    el("rect",{x:-17,y:-44,width:34,height:62,rx:3,fill:"#d9dde2",stroke:"#11161a","stroke-width":2},g);
+    el("rect",{x:-16,y:20,width:32,height:22,rx:5,fill:"#3d6fb6",stroke:"#11161a","stroke-width":2},g);
+  }else{
+    el("rect",{x:-15,y:-25,width:30,height:50,rx:7,fill:color,stroke:"#11161a","stroke-width":2},g);
+    el("rect",{x:-11,y:-16,width:22,height:11,rx:3,fill:"#5c7a99"},g);
+    el("rect",{x:-11,y:12,width:22,height:7,rx:2,fill:"#5c7a99"},g);
+  }
+  return g;
+}
+function conesG(parent,x,y,w){
+  const g=el("g",{},parent);
+  el("rect",{x:x-w/2+4,y:y-34,width:w-8,height:68,rx:3,fill:"rgba(242,194,0,.18)",stroke:"#f2c200","stroke-width":2,"stroke-dasharray":"8 6"},g);
+  for(const dy of [-26,0,26]){
+    for(const dx of [-w/2+14,w/2-14]){
+      el("polygon",{points:`${x+dx},${y+dy-9} ${x+dx-7},${y+dy+8} ${x+dx+7},${y+dy+8}`,fill:"#ff7a1a",stroke:"#11161a","stroke-width":1},g);
+      el("rect",{x:x+dx-4,y:y+dy-1,width:8,height:3,fill:"#fff"},g);
+    }
+  }
+  const t=el("text",{x,y:y+5,"text-anchor":"middle","font-size":11,"font-weight":700,fill:"#f2c200","font-family":"sans-serif"},g);t.textContent="工事中";
+  return g;
 }

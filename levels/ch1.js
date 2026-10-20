@@ -2,7 +2,6 @@
    Each scenario carries the clause it is drawn from in `ref`. */
 "use strict";
 /* ---------- level definitions ---------- */
-const SRC="教則 第1章 第2節";
 const CAT={kisei:["規制標識","Regulatory"],shiji:["指示標識","Instruction"],keikai:["警戒標識","Warning"],annai:["案内標識","Guide"]};
 const CAT_WHY={
   kisei:"Regulatory signs ban or require a specific way of driving, such as closing a road to vehicles or setting a maximum speed.",
@@ -12,7 +11,14 @@ const CAT_WHY={
 };
 const CAT_SRC={kisei:"2(2)",shiji:"2(3)",keikai:"2(4)",annai:"2(5)"};
 
-const LEVELS=[
+CHAPTERS.push({
+ id:"ch1", n:1, jp:"信号、標識・標示に従うこと", en:"Follow signals, signs and markings", short:"Signals & signs",
+ src:"教則 第1章 第2節", saveKey:"hyoshiki-dojo-ch1-v1",
+ sources:[
+  '<a href="https://www.npa.go.jp/bureau/traffic/20241113kyousoku.pdf" target="_blank" rel="noopener">交通の方法に関する教則</a> (National Police Agency, consolidated to the 4 Sep 2024 amendment), 第1章 第2節',
+  'Signal meanings: 道路交通法施行令 第2条 (paraphrased, not quoted)'
+ ],
+ levels:[
  {id:"sort", n:"1.1", title:"Four kinds of main sign", short:"Kinds",
   items:["shinnyu","odan","fumikiri","hoko","speed40","chusha_ka","koji","tomare","teishisen","kosoku","chusha_kinshi","ippo"]},
  {id:"plate", n:"1.2", title:"Supplementary plates", short:"Plates",
@@ -40,4 +46,5 @@ const LEVELS=[
    {stopLine:false,cross:true,frontMin:G.cwS.y1,why:"With no stop line, the stop position is just before the crosswalk.",ref:"施行令 第2条"},
    {stopLine:false,cross:false,frontMin:G.box.y1,why:"With no stop line and no crosswalk, the stop position is just before the intersection.",ref:"施行令 第2条"}
   ]}
-];
+]
+});
