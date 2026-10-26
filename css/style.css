@@ -84,3 +84,23 @@ footer a{color:var(--accent)}
 footer ul{margin:0;padding-left:18px}
 .done-banner{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;padding:12px 0}
 .done-banner .big{font-family:var(--display);font-weight:900;font-size:2rem;font-variant-numeric:tabular-nums}
+
+/* ---------- v2 controls ---------- */
+.linkbtn{appearance:none;background:none;border:0;padding:0;color:var(--accent);font:inherit;font-size:.82rem;text-decoration:underline;cursor:pointer;align-self:flex-start}
+.linkbtn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.field .move{cursor:pointer;outline:none}
+.field .move:focus-visible rect,.field .move:focus-visible path:nth-child(2){filter:drop-shadow(0 0 3px #fff)}
+.controls{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center;background:var(--chip);border-radius:10px;padding:12px}
+.controls .lbl{font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.controls input[type=range]{width:100%;accent-color:var(--accent);min-width:0}
+.controls .speed{font-family:var(--display);font-weight:900;font-size:1.05rem;font-variant-numeric:tabular-nums;white-space:nowrap}
+.controls #horn{grid-column:1 / 3;justify-self:start}
+.controls #horn[aria-pressed="true"]{background:var(--bad-bg);border-color:var(--bad);color:var(--ink)}
+.controls #drive{justify-self:end}
+.tfstage{min-height:150px;padding:12px}
+.tf-card{touch-action:none;cursor:grab;background:var(--paper);border:1px solid var(--edge);border-radius:12px;padding:14px 16px;max-width:100%;user-select:none;-webkit-user-select:none;display:flex;flex-direction:column;gap:6px}
+.tf-card.dragging{cursor:grabbing;position:fixed;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.tf-q{margin:0;font-family:var(--display);font-weight:700;font-size:1.02rem;line-height:1.55}
+.tf-en{margin:0;font-size:.84rem;color:var(--muted)}
+.bins.tf .bin{align-items:center;text-align:center}
+.bins.tf .mark{font-family:var(--display);font-weight:900;font-size:2rem;line-height:1}

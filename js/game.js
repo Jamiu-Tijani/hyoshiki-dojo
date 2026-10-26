@@ -22,12 +22,13 @@ function loadChapter(i){
 function save(){store.set(chap().saveKey,saved);}
 
 /* ---------- state ---------- */
-let cur=0, idx=0, firstTry=true, keepFirst=false, answered=false, order=[];
+let cur=0, idx=0, firstTry=true, keepFirst=false, answered=false, order=[], requeued=new Set();
 function prog(l){return saved[lvls()[l].id]||{};}
 function record(ok){
-  const id=lv().id, p=saved[id]=saved[id]||{};
-  if(!(idx in p)) p[idx]=ok&&firstTry;
-  else if(ok&&firstTry) p[idx]=true;
+  const id=lv().id, p=saved[id]=saved[id]||{}, key=order[idx];
+  const first=firstTry&&!(requeued.has(key)&&idx>=lv().items.length);
+  if(!(key in p)) p[key]=ok&&first;
+  else if(ok&&first) p[key]=true;
   save(); renderTabs();
 }
 
@@ -43,7 +44,7 @@ function renderChapters(){
 }
 function renderTabs(){
   const t=$("#tabs");t.innerHTML="";
-  t.style.gridTemplateColumns=`repeat(${lvls().length},1fr)`;
+  t.style.gridTemplateColumns=`repeat(${Math.min(4,lvls().length)},1fr)`;
   lvls().forEach((L,i)=>{
     const p=prog(i), right=Object.values(p).filter(Boolean).length;
     const b=document.createElement("button");
@@ -55,12 +56,13 @@ function renderTabs(){
 }
 
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function startLevel(){idx=0;const L=lv();order=L.id==="sort"?shuffle(L.items.map((_,i)=>i)):L.items.map((_,i)=>i);renderTabs();renderScenario();}
+function startLevel(){idx=0;requeued=new Set();const L=lv(),ix=L.items.map((_,i)=>i);order=(L.id==="sort"||L.kind==="tf")?shuffle(ix):ix;renderTabs();renderScenario();}
+function item(){return lv().items[order[idx]];}
 
 function shell(prompt,hint){
   const L=lv();
   $("#card").innerHTML=`
-   <div class="lvl-head"><h2>${L.n} ${L.title}</h2><span class="count">${idx+1} of ${L.items.length}</span></div>
+   <div class="lvl-head"><h2>${L.n} ${L.title}</h2><span class="count">${idx<L.items.length?`${idx+1} of ${L.items.length}`:"Review"}</span></div>
    <p class="prompt">${prompt}</p>
    <div id="body" style="display:flex;flex-direction:column;gap:12px"></div>
    ${hint?`<p class="hint">${hint}</p>`:""}
@@ -77,10 +79,10 @@ function feedback(ok,why,ref,{retry=true}={}){
   record(ok);
   const c=$("#ctrl");c.innerHTML="";
   if(!ok&&retry){const r=document.createElement("button");r.className="btn";r.id="retry";r.textContent="Try again";r.onclick=()=>{firstTry=false;keepFirst=true;renderScenario();};c.appendChild(r);}
-  const n=document.createElement("button");n.className="btn primary";n.id="next";n.textContent=idx<lv().items.length-1?"Next":"Finish";n.onclick=next;c.appendChild(n);
+  const n=document.createElement("button");n.className="btn primary";n.id="next";n.textContent=idx<order.length-1?"Next":"Finish";n.onclick=next;c.appendChild(n);
   if(!ok)firstTry=false;
 }
-function next(){if(idx<lv().items.length-1){idx++;renderScenario();}else finish();}
+function next(){if(idx<order.length-1){idx++;renderScenario();}else finish();}
 function finish(){
   const L=lv(),p=prog(cur),right=Object.values(p).filter(Boolean).length;
   const lastLevel=cur>=lvls().length-1, nextChap=CHAPTERS[chi+1];
@@ -125,7 +127,7 @@ function renderSort(){
 
 /* ---------- 1.2 plates ---------- */
 function renderPlate(){
-  const s=lv().items[idx];
+  const s=item();
   const body=shell(`You are driving a <span class="goal">${s.car||"普通乗用車"}</span>. Drag the car to where you may legally go: <b>straight on</b> past the sign, or <b>turn right</b> instead.`,"Tap a highlighted area if dragging is awkward.");
   body.innerHTML=`<div class="hud"><div class="item"><span class="lbl">Now</span><span class="clock">${s.day} ${s.time}</span></div>
      <div class="item"><span class="lbl">Sign ahead</span><div style="display:flex;align-items:center;gap:8px">${signSVG(s.sign,48)}${s.plate?plateSVG(s.plate,s.plate.length>3?96:70):`<span class="hint">no plate</span>`}</div></div></div>
@@ -171,14 +173,16 @@ function classify(pts){
   return{kind,lane};
 }
 function renderSignal(){
-  const s=lv().items[idx];
+  const s=item();
   const body=shell(`You want to <span class="goal">${GOALW[s.goal]}</span>. Draw what you may do now: start your finger on the car and drag a path. To stop, end the path at the stop line.`);
   body.innerHTML=`<div class="hud"><div class="item"><span class="lbl">Signal</span>${signalSVG(s.sig,s.arrows||[])}</div>
      <div class="item"><span class="lbl">State</span><span class="hv">${signalWords[s.sig]}${s.arrows?" + green right arrow":""}</span></div>
+     ${s.cross?`<div class="item"><span class="lbl">Cross street</span>${signalSVG(s.cross)}</div>`:""}
      ${s.plate?`<div class="item"><span class="lbl">Board</span>${leftOkPlate}</div>`:""}
      ${s.peds?`<div class="item"><span class="lbl">Crosswalk</span><span class="hint">Pedestrian in front of you, crossing on their green</span></div>`:""}</div>
      <svg class="field" id="f" viewBox="0 0 360 360" aria-label="intersection"></svg>
-     <div class="alt"><span>Or choose:</span>${["left","straight","right","stop"].map(k=>`<button data-k="${k}">${k==="stop"?"Stop at line":GOALW[k].replace(/^\w/,c=>c.toUpperCase())}</button>`).join("")}<button data-k="stopgo">Stop, then straight</button></div>`;
+     <button class="linkbtn" id="showalt" type="button">Can't draw here? Show choices</button>
+     <div class="alt" id="alt" hidden><span>Choose:</span>${["left","straight","right","stop"].map(k=>`<button data-k="${k}">${k==="stop"?"Stop at line":GOALW[k].replace(/^\w/,c=>c.toUpperCase())}</button>`).join("")}<button data-k="stopgo">Stop, then straight</button></div>`;
   const f=$("#f");
   drawCrossing(f,{stopLine:true,cross:true,westCross:true,peds:!!s.peds});
   const pathEl=el("polyline",{points:"",fill:"none",stroke:"#8fb4ff","stroke-width":5,"stroke-linecap":"round","stroke-linejoin":"round","stroke-dasharray":"2 9"},f);
@@ -204,7 +208,8 @@ function renderSignal(){
     p.push({x:p[p.length-1].x,y:p[p.length-1].y,t:e.timeStamp});
     if(p.length<4){pathEl.setAttribute("points","");return;}
     judge(classify(p),p.filter((q,i)=>i===0||q.x!==p[i-1].x||q.y!==p[i-1].y));});
-  body.querySelectorAll(".alt button").forEach(b=>b.onclick=()=>{
+  $("#showalt").onclick=()=>{$("#alt").hidden=false;$("#showalt").hidden=true;};
+  body.querySelectorAll("#alt button").forEach(b=>b.onclick=()=>{
     const k=b.dataset.k,lane={left:[[150,240],[150,160],[60,150]],right:[[150,240],[160,120],[300,90]],straight:[[150,240],[150,20]],stopgo:[[150,240],[150,20]],stop:[[150,246]]}[k];
     const line=[{x:G.start.x,y:G.start.y-25}].concat(lane.map(([x,y])=>({x,y})));
     pathEl.setAttribute("points",line.map(q=>q.x+","+q.y).join(" "));
@@ -225,7 +230,7 @@ function animate(car,line){
 
 /* ---------- 1.4 stop position ---------- */
 function renderStop(){
-  const s=lv().items[idx];
+  const s=item();
   const body=shell(`The signal ahead is <span class="goal">赤 (red)</span>. Drag the car forward and stop it at the correct stop position.`,"Or tap the road where the front of the car should stop.");
   body.innerHTML=`<div class="hud"><div class="item"><span class="lbl">Signal</span>${signalSVG("red")}</div>
     <div class="item"><span class="lbl">Markings</span><span class="hv">${s.stopLine?"Stop line + crosswalk":s.cross?"Crosswalk only":"No stop line, no crosswalk"}</span></div></div>
@@ -251,6 +256,182 @@ function renderStop(){
   };
 }
 
+/* ---------- 1.5 bans: tap every move the sign or marking bans ---------- */
+const MOVES={
+  straight:{label:"Go straight",d:"M150 262 L150 46",hit:"M150 176 L150 40",lab:[150,22]},
+  left:{label:"Turn left",d:"M150 262 L150 186 Q150 150 112 150 L44 150",hit:"M128 150 L36 150",lab:[62,128]},
+  right:{label:"Turn right",d:"M150 262 L150 130 Q150 92 192 92 L318 92",hit:"M174 92 L326 92",lab:[298,70]},
+  uturn:{label:"U-turn",d:"M146 262 L146 168 Q146 132 180 132 Q214 132 214 168 L214 262",hit:"M214 150 L214 268",lab:[262,300]},
+  park:{label:"Park 駐車",chip:[246,200],sub:"Leave the car"},
+  stop:{label:"Stop 停車",chip:[246,258],sub:"Brief, e.g. drop-off"}
+};
+function renderBans(){
+  const s=item();
+  const what=s.sign?"this sign":s.edge?"this road-edge marking":"the arrows painted in your lane";
+  const body=shell(`Tap every move ${what} <b>bans</b> for you, then press Check. If nothing is banned, press Check with nothing selected.`);
+  const signChip=s.sign?`<div class="item"><span class="lbl">Sign</span>${signSVG(s.sign,52)}</div>`:"";
+  const where={ahead:"At the entrance to the road straight ahead",approach:"On your side, before the junction",cross:"Facing you across the junction, for the cross street"}[s.at]||"";
+  const rows=[];
+  if(s.sign)rows.push(["Posted",where]);
+  if(s.edge)rows.push(["Marking",s.edge==="yellow"?"Solid yellow line along the road edge":"Broken yellow line along the road edge"]);
+  if(s.laneArrows)rows.push(["Marking","Arrows painted in your lane"]);
+  if(s.car)rows.push(["You drive","普通乗用車 (ordinary car)"]);
+  body.innerHTML=hudHTML(rows,signChip)+`<svg class="field" id="f" viewBox="0 0 360 360" aria-label="junction with possible moves"></svg>
+    <div class="row"><button class="btn" id="clear">Clear</button><button class="btn primary" id="check">Check</button></div>`;
+  const f=$("#f");
+  drawCrossing(f,{stopLine:true,cross:false});
+  const defs=el("defs",{},f);
+  for(const [id,c] of [["ah","#8fb4ff"],["ahx","#ff6b5e"]]){
+    const m=el("marker",{id,viewBox:"0 0 10 10",refX:5,refY:5,markerWidth:4,markerHeight:4,orient:"auto-start-reverse"},defs);
+    el("path",{d:"M0 0 L10 5 L0 10 Z",fill:c},m);
+  }
+  if(s.edge){
+    el("line",{x1:124,y1:186,x2:124,y2:360,stroke:"#f2c200","stroke-width":4,"stroke-dasharray":s.edge==="yellowdash"?"16 10":"none"},f);
+  }
+  if(s.laneArrows){
+    const g=el("g",{transform:"translate(150 236)"},f);
+    el("path",{d:"M4 14 L4 -18 M-10 -6 L4 -20 L18 -6",stroke:LINE,"stroke-width":5,fill:"none"},g);
+    el("path",{d:"M4 2 Q4 -8 -8 -8 L-18 -8 M-12 -16 L-20 -8 L-12 0",stroke:LINE,"stroke-width":4,fill:"none"},g);
+  }
+  if(s.sign){
+    const pos={ahead:[86,8],approach:[82,196],cross:[250,192]}[s.at];
+    el("line",{x1:pos[0]+17,y1:pos[1]+34,x2:pos[0]+17,y2:pos[1]+52,stroke:"#9aa0a6","stroke-width":3},f);
+    const sg=el("g",{transform:`translate(${pos[0]} ${pos[1]}) scale(.34)`},f);sg.innerHTML=SIGNS[s.sign].svg;
+    if(s.at==="cross"){const t=el("text",{x:300,y:84,"text-anchor":"middle","font-size":10,fill:"#e8ece9","font-family":"sans-serif"},f);t.textContent="cross street";}
+  }
+  carG(f,G.start.x,G.start.y);
+  const sel=new Set();
+  const draw={};
+  for(const k of s.moves){
+    const M=MOVES[k], g=el("g",{class:"move",tabindex:0,role:"button","aria-pressed":"false","aria-label":M.label},f);
+    if(M.d){
+      const vis=el("path",{d:M.d,stroke:"#8fb4ff","stroke-width":7,fill:"none","stroke-linecap":"round","marker-end":"url(#ah)",opacity:.9,"pointer-events":"none"},g);
+      const [lx,ly]=M.lab;
+      const tb=el("rect",{x:lx-36,y:ly-11,width:72,height:17,rx:8,fill:"rgba(20,24,27,.75)"},g);
+      const t=el("text",{x:lx,y:ly+2,"text-anchor":"middle","font-size":10.5,fill:"#e8ece9","font-family":"sans-serif"},g);t.textContent=M.label;
+      el("path",{class:"hit",d:M.hit,stroke:"rgba(0,0,0,0)","stroke-width":34,fill:"none","pointer-events":"stroke"},g);
+      draw[k]={g,vis,tb};
+    }else{
+      const [x,y]=M.chip;
+      const r=el("rect",{class:"hit",x,y,width:96,height:44,rx:9,fill:"rgba(20,24,27,.78)",stroke:"#8fb4ff","stroke-width":2},g);
+      const t=el("text",{x:x+44,y:y+19,"text-anchor":"middle","font-size":11,"font-weight":700,fill:"#e8ece9","font-family":"sans-serif"},g);t.textContent=M.label;
+      const t2=el("text",{x:x+48,y:y+34,"text-anchor":"middle","font-size":9.5,fill:"#b9c2c8","font-family":"sans-serif"},g);t2.textContent=M.sub;
+      draw[k]={g,r};
+    }
+    const xg=el("g",{visibility:"hidden"},g);
+    const c=M.d?[0,0]:[M.chip[0]+96,M.chip[1]+6];
+    const cx=M.d?(k==="straight"?150:k==="left"?84:k==="right"?270:214):c[0], cy=M.d?(k==="straight"?110:k==="left"?150:k==="right"?92:226):c[1];
+    el("circle",{cx,cy,r:12,fill:"#c8102e",stroke:"#fff","stroke-width":2},xg);
+    el("path",{d:`M${cx-5} ${cy-5} L${cx+5} ${cy+5} M${cx+5} ${cy-5} L${cx-5} ${cy+5}`,stroke:"#fff","stroke-width":3},xg);
+    draw[k].x=xg;
+    const toggle=()=>{if(answered)return;sel.has(k)?sel.delete(k):sel.add(k);paint(k);};
+    g.addEventListener("click",toggle);
+    g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}});
+  }
+  function paint(k){
+    const on=sel.has(k),D=draw[k];D.g.setAttribute("aria-pressed",on);D.x.setAttribute("visibility",on?"visible":"hidden");
+    if(D.vis){D.vis.setAttribute("stroke",on?"#ff6b5e":"#8fb4ff");D.vis.setAttribute("marker-end",on?"url(#ahx)":"url(#ah)");D.vis.setAttribute("stroke-dasharray",on?"10 8":"none");}
+    if(D.r)D.r.setAttribute("stroke",on?"#ff6b5e":"#8fb4ff");
+  }
+  $("#clear").onclick=()=>{if(answered)return;sel.clear();s.moves.forEach(paint);};
+  $("#check").onclick=()=>{
+    if(answered)return;
+    const want=new Set(s.banned);
+    const missed=[...want].filter(k=>!sel.has(k)), extra=[...sel].filter(k=>!want.has(k));
+    const ok=!missed.length&&!extra.length;
+    let why=s.why;
+    if(!ok){
+      const parts=[];
+      if(missed.length)parts.push(`Also banned: ${missed.map(k=>MOVES[k].label.toLowerCase()).join(", ")}.`);
+      if(extra.length)parts.push(`Still allowed: ${extra.map(k=>MOVES[k].label.toLowerCase()).join(", ")}.`);
+      why=parts.join(" ")+" "+why;
+    }
+    feedback(ok,why,s.ref);
+  };
+}
+
+/* ---------- 1.6 approach: set speed and horn, then drive ---------- */
+function renderApproach(){
+  const s=item();
+  const body=shell(`Set how you approach this spot, then press Drive. Speed is what you'll be doing as you reach the line or the hazard.`);
+  body.innerHTML=hudHTML([["Sign",""]].slice(0,0),`<div class="item"><span class="lbl">Sign</span>${signSVG(s.sign,52)}</div>`+
+     (s.peds?`<div class="item"><span class="lbl">Ahead</span><span class="hv">A pedestrian waiting at the crosswalk</span></div>`:"")+
+     (s.curve?`<div class="item"><span class="lbl">Ahead</span><span class="hv">Blind bend · limit ${s.limit} km/h</span></div>`:"")+
+     (s.stopLine?`<div class="item"><span class="lbl">Ahead</span><span class="hv">Junction, no traffic in sight</span></div>`:""))+
+    `<svg class="field" id="f" viewBox="0 0 360 360" aria-label="road approach"></svg>
+     <div class="controls">
+       <label for="spd" class="lbl">Speed</label>
+       <input type="range" id="spd" min="0" max="60" step="5" value="30" aria-describedby="spdv">
+       <output id="spdv" class="speed">30 km/h</output>
+       <button class="btn" id="horn" type="button" aria-pressed="false">Horn: off</button>
+       <button class="btn primary" id="drive" type="button">Drive</button>
+     </div>`;
+  const f=$("#f");
+  el("rect",{x:0,y:0,width:360,height:360,fill:"var(--field)"},f);
+  if(s.curve){
+    el("path",{d:"M150 360 L150 170 Q150 60 300 60 L360 60",stroke:ROAD,"stroke-width":120,fill:"none"},f);
+    el("path",{d:"M150 360 L150 170 Q150 60 300 60 L360 60",stroke:LINE,"stroke-width":3,"stroke-dasharray":"16 10",fill:"none",transform:"translate(30 0)"},f);
+    el("rect",{x:230,y:120,width:130,height:120,fill:"#2f5a3a"},f);
+    const t=el("text",{x:295,y:186,"text-anchor":"middle","font-size":11,fill:"#dfe8df","font-family":"sans-serif"},f);t.textContent="trees · no view";
+  }else{
+    el("rect",{x:120,y:0,width:120,height:360,fill:ROAD},f);
+    el("line",{x1:180,y1:0,x2:180,y2:360,stroke:LINE,"stroke-width":3,"stroke-dasharray":"16 10"},f);
+  }
+  let lineY=null;
+  if(s.stopLine){el("rect",{x:0,y:30,width:360,height:60,fill:ROAD},f);el("rect",{x:120,y:100,width:60,height:5,fill:LINE},f);lineY=105;}
+  if(s.crosswalk){for(let i=0;i<8;i++)el("rect",{x:124+i*15,y:90,width:8,height:24,fill:LINE},f);
+    el("path",{d:"M150 150 L160 160 L150 170 L140 160 Z",stroke:LINE,"stroke-width":2,fill:"none"},f);lineY=118;
+    if(s.peds)pedestrian(f,108,102);}
+  const sg=el("g",{transform:"translate(70 186) scale(.42)"},f);sg.innerHTML=SIGNS[s.sign].svg;
+  el("line",{x1:91,y1:228,x2:91,y2:250,stroke:"#9aa0a6","stroke-width":3},f);
+  const x=150; const car=carG(f,x,318);
+  const spd=$("#spd"), out=$("#spdv"), horn=$("#horn");
+  const lbl=v=>v==0?"0 km/h · stop":`${v} km/h`;
+  spd.oninput=()=>{out.textContent=lbl(spd.value);};
+  horn.onclick=()=>{if(answered)return;const on=horn.getAttribute("aria-pressed")!=="true";horn.setAttribute("aria-pressed",on);horn.textContent=on?"Horn: ON":"Horn: off";};
+  $("#drive").onclick=()=>{
+    if(answered)return;
+    const v=+spd.value, h=horn.getAttribute("aria-pressed")==="true";
+    const ok=v>=s.min&&v<=s.max&&h===s.horn;
+    const parts=[];
+    if(v<s.min)parts.push(s.min>0?(v===0?"You don't need to stop here.":"Too slow."):"");
+    if(v>s.max)parts.push(s.max===0?`You must stop here, not drive through at ${v} km/h.`:`${v} km/h is too fast here.`);
+    if(h!==s.horn)parts.push(s.horn?"You also needed to sound the horn.":"The horn wasn't called for.");
+    feedback(ok,(ok?"":parts.filter(Boolean).join(" ")+" ")+s.why,s.ref);
+    if(h){const t=el("text",{x:x+28,y:300,"font-size":14,"font-weight":700,fill:"#ffd76a","font-family":"sans-serif"},f);t.textContent="プッ ♪";}
+    const endY=v===0?(lineY?lineY+27:250):-60;
+    if(reduceMotion){car.setAttribute("transform",`translate(${x} ${endY})`);return;}
+    const t0=performance.now(),dur=v===0?900:Math.max(700,2400-v*28);
+    const step=t=>{const k=Math.min(1,(t-t0)/dur),e=v===0?1-Math.pow(1-k,3):k;car.setAttribute("transform",`translate(${x} ${318+(endY-318)*e})`);if(k<1)requestAnimationFrame(step);};
+    requestAnimationFrame(step);
+  };
+}
+
+/* ---------- 1.7 〇× : drag the statement card ---------- */
+function renderTF(){
+  const s=item();
+  const body=shell("True or false? Drag the card to 〇 or ×, or tap one.");
+  body.innerHTML=`<div class="stage tfstage"><div class="tf-card" id="sc"><p class="tf-q" lang="ja">${s.q}</p><p class="tf-en">${s.en}</p></div></div>
+    <div class="bins tf"><button class="bin tfbin" id="bin-true" data-a="true"><span class="mark">〇</span><span class="en">True</span></button>
+    <button class="bin tfbin" id="bin-false" data-a="false"><span class="mark">×</span><span class="en">False</span></button></div>`;
+  const judge=a=>{
+    if(answered)return;
+    const ok=a===s.a;
+    feedback(ok,`Answer: <b>${s.a?"〇":"×"}</b>. ${s.why}`,s.ref,{retry:false});
+    if(!ok&&!requeued.has(order[idx])){requeued.add(order[idx]);order.push(order[idx]);
+      $("#fb .feedback").insertAdjacentHTML("beforeend",`<span class="src">This one comes back at the end of the set.</span>`);
+      $("#next").textContent="Next";}
+  };
+  body.querySelectorAll(".tfbin").forEach(b=>b.onclick=()=>judge(b.dataset.a==="true"));
+  const sc=$("#sc");let drag=null;
+  sc.addEventListener("pointerdown",e=>{if(answered)return;sc.setPointerCapture(e.pointerId);const r=sc.getBoundingClientRect();drag={x0:e.clientX,w:r.width,dx:e.clientX-r.left,dy:e.clientY-r.top};sc.classList.add("dragging");sc.style.width=r.width+"px";move(e);});
+  const move=e=>{if(!drag)return;sc.style.left=(e.clientX-drag.dx)+"px";sc.style.top=(e.clientY-drag.dy)+"px";
+    body.querySelectorAll(".tfbin").forEach(b=>{const r=b.getBoundingClientRect();b.classList.toggle("hot",e.clientX>r.left&&e.clientX<r.right&&e.clientY>r.top&&e.clientY<r.bottom);});};
+  sc.addEventListener("pointermove",move);
+  sc.addEventListener("pointerup",()=>{if(!drag)return;drag=null;sc.classList.remove("dragging");sc.style.left=sc.style.top=sc.style.width="";
+    const hot=body.querySelector(".tfbin.hot");body.querySelectorAll(".tfbin").forEach(b=>b.classList.remove("hot"));if(hot)judge(hot.dataset.a==="true");});
+}
+
 /* ======================= Chapter 2 ======================= */
 /* ---------- lanes: drag the car into a lane ---------- */
 const RX0=30, RW=300;
@@ -264,7 +445,7 @@ function laneName(s,i){
   return ["Left lane","Middle lane","Right lane"][i]||`Lane ${i+1}`;
 }
 function renderLanes(){
-  const s=lv().items[idx], n=s.lanes.length, g=laneGeom(n);
+  const s=item(), n=s.lanes.length, g=laneGeom(n);
   const body=shell(lv().task,"Or tap a lane, or use the buttons.");
   const signChip=s.sign?`<div class="item"><span class="lbl">Sign</span>${signSVG(s.sign,44)}</div>`:"";
   body.innerHTML=hudHTML(s.hud,signChip)+
@@ -327,7 +508,7 @@ function renderLanes(){
 /* Layout (viewBox 360): car park y 0–120, pavement y 120–170, road y 170–360. Driveway x 140–220. */
 const K={park:120,walk0:120,walk1:170};
 function renderKerb(){
-  const s=lv().items[idx], into=s.dir==="in";
+  const s=item(), into=s.dir==="in";
   const body=shell(into
     ?`You are turning into a <span class="goal">car park</span> across the pavement. Drag the car and stop it where you must stop.`
     :`You are leaving a <span class="goal">car park</span> across the pavement. Drag the car and stop it where you must stop.`,
@@ -376,7 +557,7 @@ function renderKerb(){
 
 function renderScenario(){
   const L=lv(), k=L.kind||L.id;
-  ({sort:renderSort,plate:renderPlate,signal:renderSignal,stoppos:renderStop,lanes:renderLanes,kerb:renderKerb})[k]();
+  ({sort:renderSort,plate:renderPlate,signal:renderSignal,stoppos:renderStop,bans:renderBans,approach:renderApproach,tf:renderTF,lanes:renderLanes,kerb:renderKerb})[k]();
 }
 
 /* ---------- boot ---------- */

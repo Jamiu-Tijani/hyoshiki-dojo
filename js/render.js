@@ -38,6 +38,33 @@ const SIGNS = {
   kosoku:   {jp:"入口の予告", en:"Expressway entrance ahead", cat:"annai",
     svg:`<rect x="3" y="14" width="94" height="72" rx="6" fill="${GRN}" stroke="${WHT}" stroke-width="2"/><text x="50" y="44" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="17" fill="${WHT}">首都高</text><text x="50" y="70" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="17" fill="${WHT}">入口 1km</text>`}
 };
+/* v2 signs. Arrow shapes are simplified; colours and layout follow the official designs. */
+const blueDisc=`<circle cx="50" cy="50" r="46" fill="${BLUE}" stroke="${WHT}" stroke-width="3"/>`;
+const upArrow=(x)=>`<polygon points="${x},14 ${x+18},38 ${x+7},38 ${x+7},84 ${x-7},84 ${x-7},38 ${x-18},38" fill="${WHT}"/>`;
+const leftHead=`<polygon points="14,40 32,24 32,56" fill="${WHT}"/>`;
+Object.assign(SIGNS,{
+  shitei_s:{jp:"指定方向外進行禁止（直進のみ）", en:"Straight ahead only", cat:"kisei", svg:blueDisc+upArrow(50)},
+  shitei_l:{jp:"指定方向外進行禁止（左折のみ）", en:"Left turn only", cat:"kisei",
+    svg:blueDisc+`<path d="M58 84 L58 52 Q58 40 46 40 L30 40" stroke="${WHT}" stroke-width="14" fill="none" stroke-linejoin="round"/>`+leftHead},
+  shitei_sl:{jp:"指定方向外進行禁止（直進・左折）", en:"Straight ahead or left only", cat:"kisei",
+    svg:blueDisc+upArrow(62)+`<path d="M58 64 Q58 52 46 52 L32 52" stroke="${WHT}" stroke-width="12" fill="none"/><polygon points="16,52 32,38 32,66" fill="${WHT}"/>`},
+  tenkai:{jp:"転回禁止", en:"No U-turn", cat:"kisei",
+    svg:`<circle cx="50" cy="50" r="44" fill="${BLUE}" stroke="${RED}" stroke-width="9"/><path d="M36 80 L36 44 Q36 26 52 26 Q68 26 68 44 L68 54" stroke="${WHT}" stroke-width="10" fill="none"/><polygon points="57,52 79,52 68,70" fill="${WHT}"/><line x1="22" y1="22" x2="78" y2="78" stroke="${RED}" stroke-width="9"/>`},
+  chuteisha_kinshi:{jp:"駐停車禁止", en:"No stopping or parking", cat:"kisei",
+    svg:ring(BLUE)+`<line x1="24" y1="24" x2="76" y2="76" stroke="${RED}" stroke-width="10"/><line x1="76" y1="24" x2="24" y2="76" stroke="${RED}" stroke-width="10"/>`},
+  hokosha:{jp:"歩行者専用", en:"Pedestrians only", cat:"kisei",
+    svg:blueDisc+`<circle cx="42" cy="26" r="7" fill="${WHT}"/><path d="M42 34 L40 56 L32 78 M40 56 L48 78 M41 40 L30 52 M41 40 L52 50" stroke="${WHT}" stroke-width="7" stroke-linecap="round" fill="none"/><circle cx="64" cy="48" r="5" fill="${WHT}"/><path d="M64 54 L63 68 L58 80 M63 68 L68 80 M52 50 L64 58" stroke="${WHT}" stroke-width="5" stroke-linecap="round" fill="none"/>`},
+  jitensha_hokosha:{jp:"自転車及び歩行者専用", en:"Bicycles and pedestrians only", cat:"kisei",
+    svg:blueDisc+`<circle cx="30" cy="66" r="11" stroke="${WHT}" stroke-width="4" fill="none"/><circle cx="58" cy="66" r="11" stroke="${WHT}" stroke-width="4" fill="none"/><path d="M30 66 L40 50 L56 50 L58 66 M40 50 L36 42 M48 66 L40 50" stroke="${WHT}" stroke-width="4" fill="none"/><circle cx="72" cy="28" r="6" fill="${WHT}"/><path d="M72 34 L71 52 L66 64 M71 52 L76 64 M71 40 L64 46 M71 40 L78 46" stroke="${WHT}" stroke-width="5" stroke-linecap="round" fill="none"/>`},
+  ogata:{jp:"大型貨物自動車等通行止め", en:"No large freight vehicles", cat:"kisei",
+    svg:ring(WHT)+`<rect x="22" y="36" width="38" height="26" fill="${BLK}"/><path d="M62 44 L72 44 L80 52 L80 62 L62 62 Z" fill="${BLK}"/><circle cx="32" cy="66" r="6" fill="${BLK}"/><circle cx="70" cy="66" r="6" fill="${BLK}"/>`},
+  jokou:{jp:"徐行", en:"Slow down (go slowly)", cat:"kisei",
+    svg:`<polygon points="6,10 94,10 50,92" fill="${RED}" stroke="${WHT}" stroke-width="4" stroke-linejoin="round"/><text x="50" y="38" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="20" fill="${WHT}">徐行</text><text x="50" y="55" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="11" fill="${WHT}">SLOW</text>`},
+  keiteki:{jp:"警笛鳴らせ", en:"Sound your horn", cat:"kisei",
+    svg:blueDisc+`<polygon points="22,42 38,42 72,22 72,78 38,58 22,58" fill="${WHT}"/>`},
+  shingo:{jp:"信号機あり", en:"Traffic signal ahead", cat:"keikai",
+    svg:diamond+`<rect x="40" y="22" width="20" height="56" rx="5" fill="${BLK}"/><circle cx="50" cy="33" r="6" fill="#e3262b"/><circle cx="50" cy="50" r="6" fill="#f3b700"/><circle cx="50" cy="67" r="6" fill="#11b5a4"/>`}
+});
 const signSVG = (k,size)=>`<svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${SIGNS[k].jp}">${SIGNS[k].svg}</svg>`;
 const plateSVG = (text,w=90)=>`<svg viewBox="0 0 ${w} 34" width="${w}" height="34" role="img" aria-label="補助標識 ${text}"><rect x="1" y="1" width="${w-2}" height="32" rx="3" fill="${WHT}" stroke="${BLK}" stroke-width="2"/><text x="${w/2}" y="23" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="17" fill="${BLK}">${text}</text></svg>`;
 const leftOkPlate = `<svg viewBox="0 0 60 44" width="60" height="44" role="img" aria-label="白地に青の左向き矢印の標示板"><rect x="1" y="1" width="58" height="42" rx="4" fill="${WHT}" stroke="#888" stroke-width="2"/><polygon points="10,22 26,10 26,17 50,17 50,27 26,27 26,34" fill="${BLUE}"/></svg>`;

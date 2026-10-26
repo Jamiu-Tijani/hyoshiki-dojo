@@ -25,13 +25,14 @@ Known changes after the 2024 consolidation that later chapters must patch in:
 
 - The wording of the yellow-light exception and the flashing-light rules (施行令 第2条) comes from secondary sources.
 - The abbreviation 大貨 (付表4) was not checked against the source table.
+- **Chapter 1 v2 (levels 1.5–1.7).** Sign and marking meanings come from the sign standard and the Road Traffic Act as taught in driving-school material, not from 付表3 itself (the PDF can't be read that far). The article numbers cited in feedback (第2条, 第37条, 第38条, 第43条, 第50条, 第54条) were not checked against the statute text. "徐行 ≈ 10 km/h or less" is a teaching guideline, not law; the game says so.
 - **Chapter 2 as a whole.** The published 教則 PDF can't be read past 第4章, so Chapter 2 uses the Road Traffic Act articles that 第5章第2節 restates (第17条, 第18条, 第20条, 第20条の2), as summarised in driving-school study material and police guidance. Two rules rest on general knowledge, not on a source I read: a yellow centre line still lets you go round an obstruction (2.1), and a yellow lane line bans lane changes (2.2, 第26条の2). Both say "check against your textbook" in the game.
 
 ## Chapters
 
 | Game ch. | 教則 section | Topic | Status |
 |---|---|---|---|
-| 1 | 第1章 第2節 | Signals, signs and markings | Done |
+| 1 | 第1章 第2節 | Signals, signs and markings (v2: 7 levels, 75 items) | Done |
 | 2 | 第5章 第2節 | Where cars may drive | Done |
 | 3 | 第5章 第3節 | Protecting pedestrians, crosswalks | Next |
 | 4 | 第5章 第4節 | Speed and following distance (incl. 30 km/h change) | Planned |
@@ -54,6 +55,6 @@ js/game.js       state, level runners, progress saving
 
 Scripts are plain classic scripts loaded in order and share top-level constants, so the page runs from `file://` without a bundler.
 
-Each `levels/chN.js` pushes one object onto `CHAPTERS`. A level's `kind` picks its mechanic in `js/game.js`: `sort`, `plate`, `signal`, `stoppos` (Chapter 1), `lanes`, `kerb` (Chapter 2). New lane scenarios need no code: describe the lanes, markings and objects in data. Link to a chapter with `#ch2`. Progress is saved per chapter in the browser.
+Each `levels/chN.js` pushes one object onto `CHAPTERS`. A level's `kind` picks its mechanic in `js/game.js`: `sort`, `plate`, `signal`, `stoppos`, `bans` (tap what's banned), `approach` (speed + horn), `tf` (〇× with a review queue) in Chapter 1; `lanes`, `kerb` in Chapter 2. `bans`, `approach` and `tf` items are pure data too. New lane scenarios need no code: describe the lanes, markings and objects in data. Link to a chapter with `#ch2`. Progress is saved per chapter in the browser.
 
 Signs are simplified drawings, not to official proportions.
