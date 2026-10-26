@@ -14,8 +14,9 @@ function loadChapter(i){
   saved=store.get(chap().saveKey,{})||{};
   store.set("hyoshiki-dojo-chapter",chap().id);
   const C=chap();
-  $("#chapter-line").innerHTML=`Chapter ${C.n} · <b>${C.jp}</b> · ${C.en}`;
+  $("#chapter-line").innerHTML=`${C.tag||"Chapter "+C.n} · <b>${C.jp}</b> · ${C.en}`;
   $("#sources").innerHTML=C.sources.map(s=>`<li>${s}</li>`).join("");
+  $("#sources-intro").innerHTML="<b>Sources.</b> "+(C.intro||"Every answer cites the section it comes from. Check anything doubtful against your school textbook, which is the tiebreaker.");
   renderChapters();
   cur=0;startLevel();
 }
@@ -37,7 +38,7 @@ function renderChapters(){
   CHAPTERS.forEach((C,i)=>{
     const b=document.createElement("button");
     b.className="chap";b.id="chap-"+C.id;b.setAttribute("aria-pressed",i===chi);
-    b.innerHTML=`<span class="cn">Ch ${C.n}</span><span>${C.short}</span>`;
+    b.innerHTML=`<span class="cn">${C.tag||"Ch "+C.n}</span><span>${C.short}</span>`;
     b.onclick=()=>{if(i!==chi){try{history.replaceState(null,"","#"+C.id);}catch(e){}loadChapter(i);}};
     n.appendChild(b);
   });
@@ -56,7 +57,7 @@ function renderTabs(){
 }
 
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function startLevel(){idx=0;requeued=new Set();const L=lv(),ix=L.items.map((_,i)=>i);order=(L.id==="sort"||L.kind==="tf")?shuffle(ix):ix;renderTabs();renderScenario();}
+function startLevel(){idx=0;requeued=new Set();const L=lv(),ix=L.items.map((_,i)=>i);order=(L.id==="sort"||["tf","match","build"].includes(L.kind))?shuffle(ix):ix;renderTabs();renderScenario();}
 function item(){return lv().items[order[idx]];}
 
 function shell(prompt,hint){
@@ -72,10 +73,10 @@ function shell(prompt,hint){
   keepFirst=false;answered=false;
   return $("#body");
 }
-function refText(ref){return /^(施行令|道路交通法)/.test(ref)?ref:chap().src+" "+ref;}
+function refText(ref){if(!ref)return "";return /^(施行令|道路交通法)/.test(ref)?ref:chap().src+" "+ref;}
 function feedback(ok,why,ref,{retry=true}={}){
   answered=ok;
-  $("#fb").innerHTML=`<div class="feedback ${ok?"ok":"bad"}"><span class="verdict">${ok?"Correct":"Not quite"}</span><span>${why}</span><span class="src">${refText(ref)}</span></div>`;
+  $("#fb").innerHTML=`<div class="feedback ${ok?"ok":"bad"}"><span class="verdict">${ok?"Correct":"Not quite"}</span><span>${why}</span>${ref?`<span class="src">${refText(ref)}</span>`:""}</div>`;
   record(ok);
   const c=$("#ctrl");c.innerHTML="";
   if(!ok&&retry){const r=document.createElement("button");r.className="btn";r.id="retry";r.textContent="Try again";r.onclick=()=>{firstTry=false;keepFirst=true;renderScenario();};c.appendChild(r);}
@@ -109,15 +110,16 @@ function renderSort(){
   const body=shell("Which kind of main sign (本標識) is this? Drag it into a box, or tap a box.");
   body.innerHTML=`<div class="stage" id="stage"><div class="sign-card" id="sc">${signSVG(k,120)}</div></div>
    <div class="bins" id="bins">${Object.keys(CAT).map(c=>`<button class="bin" id="bin-${c}" data-cat="${c}"><span class="jp">${CAT[c][0]}</span><span class="en">${CAT[c][1]}</span></button>`).join("")}</div>`;
+  let done=false;
   const judge=(c)=>{
-    if(answered)return;
+    if(answered||done)return;done=true;
     const ok=c===S.cat;
     feedback(ok,`<b>${S.jp}</b> · ${S.en}. ${ok?"":`It is a <b>${CAT[S.cat][0]}</b> (${CAT[S.cat][1].toLowerCase()} sign). `}${CAT_WHY[S.cat]}`,CAT_SRC[S.cat],{retry:false});
     $("#sc").style.visibility=ok?"hidden":"visible";
   };
   body.querySelectorAll(".bin").forEach(b=>b.onclick=()=>judge(b.dataset.cat));
   const sc=$("#sc");let drag=null;
-  sc.addEventListener("pointerdown",e=>{if(answered)return;sc.setPointerCapture(e.pointerId);const r=sc.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top};sc.classList.add("dragging");move(e);});
+  sc.addEventListener("pointerdown",e=>{if(answered||(typeof done!=="undefined"&&done))return;sc.setPointerCapture(e.pointerId);const r=sc.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top};sc.classList.add("dragging");move(e);});
   const move=e=>{if(!drag)return;sc.style.left=(e.clientX-drag.dx)+"px";sc.style.top=(e.clientY-drag.dy)+"px";
     body.querySelectorAll(".bin").forEach(b=>{const r=b.getBoundingClientRect();b.classList.toggle("hot",e.clientX>r.left&&e.clientX<r.right&&e.clientY>r.top&&e.clientY<r.bottom);});};
   sc.addEventListener("pointermove",move);
@@ -414,22 +416,103 @@ function renderTF(){
   body.innerHTML=`<div class="stage tfstage"><div class="tf-card" id="sc"><p class="tf-q" lang="ja">${s.q}</p><p class="tf-en">${s.en}</p></div></div>
     <div class="bins tf"><button class="bin tfbin" id="bin-true" data-a="true"><span class="mark">〇</span><span class="en">True</span></button>
     <button class="bin tfbin" id="bin-false" data-a="false"><span class="mark">×</span><span class="en">False</span></button></div>`;
+  let done=false;
   const judge=a=>{
-    if(answered)return;
+    if(answered||done)return;done=true;
     const ok=a===s.a;
     feedback(ok,`Answer: <b>${s.a?"〇":"×"}</b>. ${s.why}`,s.ref,{retry:false});
-    if(!ok&&!requeued.has(order[idx])){requeued.add(order[idx]);order.push(order[idx]);
-      $("#fb .feedback").insertAdjacentHTML("beforeend",`<span class="src">This one comes back at the end of the set.</span>`);
-      $("#next").textContent="Next";}
+    if(!ok)requeue();
   };
   body.querySelectorAll(".tfbin").forEach(b=>b.onclick=()=>judge(b.dataset.a==="true"));
   const sc=$("#sc");let drag=null;
-  sc.addEventListener("pointerdown",e=>{if(answered)return;sc.setPointerCapture(e.pointerId);const r=sc.getBoundingClientRect();drag={x0:e.clientX,w:r.width,dx:e.clientX-r.left,dy:e.clientY-r.top};sc.classList.add("dragging");sc.style.width=r.width+"px";move(e);});
+  sc.addEventListener("pointerdown",e=>{if(answered||(typeof done!=="undefined"&&done))return;sc.setPointerCapture(e.pointerId);const r=sc.getBoundingClientRect();drag={x0:e.clientX,w:r.width,dx:e.clientX-r.left,dy:e.clientY-r.top};sc.classList.add("dragging");sc.style.width=r.width+"px";move(e);});
   const move=e=>{if(!drag)return;sc.style.left=(e.clientX-drag.dx)+"px";sc.style.top=(e.clientY-drag.dy)+"px";
     body.querySelectorAll(".tfbin").forEach(b=>{const r=b.getBoundingClientRect();b.classList.toggle("hot",e.clientX>r.left&&e.clientX<r.right&&e.clientY>r.top&&e.clientY<r.bottom);});};
   sc.addEventListener("pointermove",move);
   sc.addEventListener("pointerup",()=>{if(!drag)return;drag=null;sc.classList.remove("dragging");sc.style.left=sc.style.top=sc.style.width="";
     const hot=body.querySelector(".tfbin.hot");body.querySelectorAll(".tfbin").forEach(b=>b.classList.remove("hot"));if(hot)judge(hot.dataset.a==="true");});
+}
+
+/* ======================= Bonus: kanji ======================= */
+function speak(text){
+  try{
+    if(!("speechSynthesis" in window))return false;
+    const u=new SpeechSynthesisUtterance(text);u.lang="ja-JP";u.rate=.85;
+    const v=speechSynthesis.getVoices().find(v=>/^ja/i.test(v.lang));if(v)u.voice=v;
+    speechSynthesis.cancel();speechSynthesis.speak(u);return true;
+  }catch(e){return false;}
+}
+const canSpeak=()=>{try{return "speechSynthesis" in window;}catch(e){return false;}};
+function ruby(word,read){return read?`<ruby>${word}<rt>${read}</rt></ruby>`:word;}
+function requeue(note){
+  if(requeued.has(order[idx]))return;
+  requeued.add(order[idx]);order.push(order[idx]);
+  const fb=$("#fb .feedback");if(fb)fb.insertAdjacentHTML("beforeend",`<span class="src">${note||"This one comes back at the end of the set."}</span>`);
+  const n=$("#next");if(n)n.textContent="Next";
+}
+function listenBtn(text){
+  return canSpeak()?`<button class="btn small" type="button" id="listen" data-say="${text}">Listen</button>`:"";
+}
+function wireListen(){const b=$("#listen");if(b)b.onclick=()=>{if(!speak(b.dataset.say))b.textContent="No Japanese voice";};}
+
+/* ---------- match: drag the prompt to one of four answers ---------- */
+function renderMatch(){
+  const L=lv(), s=item(), field=L.field;
+  const pool=[...new Set(L.items.map(i=>i.a))].filter(a=>a!==s.a);
+  const opts=shuffle([s.a,...shuffle(pool).slice(0,3)]);
+  const body=shell(L.prompt);
+  const face=L.plate
+    ?`<div class="kplate" lang="ja">${s.show}</div>`
+    :`<div class="kface ${s.show.length===1?"single":""}" lang="ja">${s.show}</div>`;
+  body.innerHTML=`<div class="stage kstage"><div class="sign-card kcard" id="sc">${face}</div></div>
+    <div class="bins kbins">${opts.map((o,i)=>`<button class="bin kbin" id="opt-${i}" data-v="${o.replace(/"/g,"&quot;")}"><span class="${field==="reading"?"jp kread":"en kmean"}" ${field==="reading"?'lang="ja"':""}>${o}</span></button>`).join("")}</div>`;
+  let done=false;
+  const judge=v=>{
+    if(answered||done)return;done=true;
+    const ok=v===s.a;
+    const head=`<span lang="ja" class="kans">${ruby(s.show,s.read)}</span>`;
+    const tail=field==="reading"?` means <b>${s.mean}</b>.`:` means <b>${s.a}</b>.`;
+    feedback(ok,head+tail+(s.note?" "+s.note:"")+(ok?"":` You chose “${v}”.`)+(s.read||field==="reading"?" "+listenBtn(s.show):""),"",{retry:false});
+    wireListen();
+    if(!ok)requeue();
+    body.querySelectorAll(".kbin").forEach(b=>{if(b.dataset.v===s.a)b.classList.add("right");else if(b.dataset.v===v)b.classList.add("wrong");});
+  };
+  body.querySelectorAll(".kbin").forEach(b=>b.onclick=()=>judge(b.dataset.v));
+  const sc=$("#sc");let drag=null;
+  sc.addEventListener("pointerdown",e=>{if(answered||(typeof done!=="undefined"&&done))return;sc.setPointerCapture(e.pointerId);const r=sc.getBoundingClientRect();drag={dx:e.clientX-r.left,dy:e.clientY-r.top};sc.classList.add("dragging");move(e);});
+  const move=e=>{if(!drag)return;sc.style.left=(e.clientX-drag.dx)+"px";sc.style.top=(e.clientY-drag.dy)+"px";
+    body.querySelectorAll(".kbin").forEach(b=>{const r=b.getBoundingClientRect();b.classList.toggle("hot",e.clientX>r.left&&e.clientX<r.right&&e.clientY>r.top&&e.clientY<r.bottom);});};
+  sc.addEventListener("pointermove",move);
+  sc.addEventListener("pointerup",()=>{if(!drag)return;drag=null;sc.classList.remove("dragging");sc.style.left=sc.style.top="";
+    const hot=body.querySelector(".kbin.hot");body.querySelectorAll(".kbin").forEach(b=>b.classList.remove("hot"));if(hot)judge(hot.dataset.v);});
+}
+
+/* ---------- build: tap tiles in order ---------- */
+function renderBuild(){
+  const s=item();
+  const body=shell(`Write the sign for <span class="goal">${s.mean}</span>. Tap the tiles in order. Watch for lookalikes.`);
+  const tiles=shuffle([...s.tiles,...s.decoys].map((t,i)=>({t,i})));
+  body.innerHTML=`<div class="stage kstage"><div class="slots" id="slots" lang="ja">${s.tiles.map((_,i)=>`<span class="slot" data-i="${i}"></span>`).join("")}</div></div>
+    <div class="tiles" id="tiles" lang="ja">${tiles.map((x,j)=>`<button class="tile" type="button" id="tile-${j}" data-t="${x.t}">${x.t}</button>`).join("")}</div>
+    <div class="row"><button class="btn" id="undo" type="button">Undo</button></div>`;
+  const picked=[];
+  const slots=[...body.querySelectorAll(".slot")];
+  const paint=()=>{slots.forEach((sl,i)=>{sl.textContent=picked[i]?picked[i].dataset.t:"";sl.classList.toggle("filled",!!picked[i]);});};
+  const finishTry=()=>{
+    const got=picked.map(b=>b.dataset.t), ok=got.join("")===s.tiles.join("");
+    const head=`<span lang="ja" class="kans">${ruby(s.word,s.read)}</span> means <b>${s.mean}</b>.`;
+    const wrong=ok?"":` You wrote <span lang="ja">${got.join("")}</span>.`+(got.some(t=>s.decoys.includes(t))?" One of those is a lookalike.":"");
+    feedback(ok,head+wrong+" "+listenBtn(s.word),"",{retry:false});
+    wireListen();
+    slots.forEach(sl=>sl.classList.add(ok?"right":"wrong"));
+    if(!ok)requeue();
+  };
+  body.querySelectorAll(".tile").forEach(b=>b.onclick=()=>{
+    if(answered||b.disabled||picked.length>=s.tiles.length||$("#fb").innerHTML)return;
+    picked.push(b);b.disabled=true;paint();
+    if(picked.length===s.tiles.length)finishTry();
+  });
+  $("#undo").onclick=()=>{if($("#fb").innerHTML)return;const b=picked.pop();if(b){b.disabled=false;paint();}};
 }
 
 /* ======================= Chapter 2 ======================= */
@@ -557,7 +640,7 @@ function renderKerb(){
 
 function renderScenario(){
   const L=lv(), k=L.kind||L.id;
-  ({sort:renderSort,plate:renderPlate,signal:renderSignal,stoppos:renderStop,bans:renderBans,approach:renderApproach,tf:renderTF,lanes:renderLanes,kerb:renderKerb})[k]();
+  ({sort:renderSort,plate:renderPlate,signal:renderSignal,stoppos:renderStop,bans:renderBans,approach:renderApproach,tf:renderTF,match:renderMatch,build:renderBuild,lanes:renderLanes,kerb:renderKerb})[k]();
 }
 
 /* ---------- boot ---------- */

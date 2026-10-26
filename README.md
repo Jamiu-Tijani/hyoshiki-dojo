@@ -41,6 +41,7 @@ Known changes after the 2024 consolidation that later chapters must patch in:
 | 7 | 第5章 第5–6節 | Lane changes and overtaking | Planned |
 | 8 | 第6章 | Railway crossings, hills, night, bad weather | Planned |
 | 9 | 第7章 | Expressways | Planned |
+| Bonus | — | Road-sign kanji: 21 kanji, 22 words, 16 readings, 10 build-the-word, 10 plate phrases | Done |
 
 ## Layout
 
@@ -50,11 +51,12 @@ css/style.css    theme tokens (light/dark) and layout
 js/render.js     sign artwork, signal heads, road scenes
 levels/ch1.js    Chapter 1 scenario data, with source refs
 levels/ch2.js    Chapter 2 scenario data (lane scenarios are pure data)
+levels/bonus.js  Bonus kanji vocabulary (word lists turned into levels)
 js/game.js       state, level runners, progress saving
 ```
 
 Scripts are plain classic scripts loaded in order and share top-level constants, so the page runs from `file://` without a bundler.
 
-Each `levels/chN.js` pushes one object onto `CHAPTERS`. A level's `kind` picks its mechanic in `js/game.js`: `sort`, `plate`, `signal`, `stoppos`, `bans` (tap what's banned), `approach` (speed + horn), `tf` (〇× with a review queue) in Chapter 1; `lanes`, `kerb` in Chapter 2. `bans`, `approach` and `tf` items are pure data too. New lane scenarios need no code: describe the lanes, markings and objects in data. Link to a chapter with `#ch2`. Progress is saved per chapter in the browser.
+Each `levels/chN.js` pushes one object onto `CHAPTERS`. A level's `kind` picks its mechanic in `js/game.js`: `sort`, `plate`, `signal`, `stoppos`, `bans` (tap what's banned), `approach` (speed + horn), `tf` (〇× with a review queue) in Chapter 1; `lanes`, `kerb` in Chapter 2; `match` (drag to one of four answers) and `build` (tap tiles in order, with lookalike decoys) in the bonus chapter. Missed `tf`, `match` and `build` items return once at the end of the set. `bans`, `approach` and `tf` items are pure data too. New lane scenarios need no code: describe the lanes, markings and objects in data. Link to a chapter with `#ch2` or `#bonus`. Progress is saved per chapter in the browser.
 
 Signs are simplified drawings, not to official proportions.
