@@ -57,3 +57,26 @@ jobs:
           python -m http.server 4174 --directory dist >/dev/null 2>&1 &
           sleep 1
           HD_URL=http://127.0.0.1:4174/ python tests/e2e.py --no-engine
+
+  # Publishes dist/ to GitHub Pages on pushes to main.
+  # Requires Settings → Pages → Build and deployment → Source: "GitHub Actions".
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: dist
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

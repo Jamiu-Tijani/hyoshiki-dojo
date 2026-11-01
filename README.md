@@ -70,7 +70,13 @@ js/game.js       state, level runners, progress saving, History panel
 
 `js/track.js` stores, in this browser only: sessions (a new one starts after 30 minutes without an answer; last 200 kept), and per-item stats (attempts, first-try results, time, last seen). Item keys hash the item's own data, so they survive reordering. The History button shows this session, all-time totals, recent sessions and the items you miss most, with Export JSON and Clear.
 
-Scripts are plain classic scripts loaded in order and share top-level constants, so the page runs from `file://` without a bundler.
+### Build and deploy
+
+The game itself is plain classic scripts, so `index.html` still runs from `file://` (with SVG scenes). The immersive engine in `engine/` (TypeScript, PixiJS v8, GSAP, Web Audio) is built by Vite into `dist/engine/` and loaded on demand with `import()` only when a level uses it; if it is missing or WebGL fails, the level keeps its SVG scene.
+
+CI (`.github/workflows/ci.yml`) runs on every push: knowledge-base check, typecheck, build, bundle-size report, then `tests/e2e.py` twice against the built site over http — once with the engine, once with it disabled. Pushes to `main` deploy `dist/` to GitHub Pages (Pages source must be set to *GitHub Actions*).
+
+Local commands (need npm): `npm ci`, `npm run build`, then serve `dist/` and run `HD_URL=http://localhost:PORT/ python3 tests/e2e.py`.
 
 Each `levels/chN.js` pushes one object onto `CHAPTERS`. A level's `kind` picks its mechanic in `js/game.js`: `sort`, `plate`, `signal`, `stoppos`, `bans` (tap what's banned), `approach` (speed + horn), `tf` (〇× with a review queue) in Chapter 1; `lanes`, `kerb` in Chapter 2; `match` (drag to one of four answers) and `build` (tap tiles in order, with lookalike decoys) in the bonus chapter. Missed `tf`, `match` and `build` items return once at the end of the set. `bans`, `approach` and `tf` items are pure data too. New lane scenarios need no code: describe the lanes, markings and objects in data. Link to a chapter with `#ch2` or `#bonus`. Progress is saved per chapter in the browser.
 
