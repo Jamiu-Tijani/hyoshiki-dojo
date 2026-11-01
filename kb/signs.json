@@ -131,5 +131,20 @@
   "source": "https://commons.wikimedia.org/wiki/File:Japanese_Road_sign_(Notice_of_entrance).svg",
   "license": "Public domain",
   "author": "Widehawk ( talk ), pumpCurry (Font \"GD-HighwayGothicJA\")"
+ },
+ "shitei_s": {
+  "commons": "File:Japan road sign 311-C.svg"
+ },
+ "shitei_l": {
+  "commons": "File:Japan road sign 311-B-L.svg"
+ },
+ "shitei_sl": {
+  "commons": "File:Japan road sign 311-A-L.svg"
+ },
+ "ippo": {
+  "commons": "File:Japan road sign 326-A-L.svg"
+ },
+ "chusha_ka": {
+  "commons": "File:Japanese Road sign (Parking lot A, Parking permitted).svg"
  }
 }
