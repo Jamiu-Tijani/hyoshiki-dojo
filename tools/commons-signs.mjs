@@ -22,6 +22,19 @@ async function api(params) {
     await new Promise(res => setTimeout(res, 1500 * attempt));
   }
 }
+/* upload.wikimedia.org rate-limits bursts with 429: wait as told (or back off) and retry. */
+async function download(url) {
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    const r = await fetch(url, { headers: { "User-Agent": UA } });
+    if (r.ok) return r;
+    if (r.status !== 429 && r.status < 500) return r;
+    const ra = Number(r.headers.get("retry-after"));
+    const wait = (Number.isFinite(ra) && ra > 0 ? ra : 5 * attempt) * 1000;
+    console.log(`  ${r.status}, waiting ${wait / 1000}s (attempt ${attempt})`);
+    await new Promise(res => setTimeout(res, wait));
+  }
+  return fetch(url, { headers: { "User-Agent": UA } });
+}
 const strip = s => String(s || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
 async function searchTitles(q) {
@@ -121,14 +134,14 @@ async function fetchChosen() {
     const m = meta[s.commons];
     if (!m) { console.error(`error: ${key}: ${s.commons} not found on Commons`); bad++; continue; }
     if (!ALLOWED.test(m.license)) { console.error(`error: ${key}: licence "${m.license}" not allowed`); bad++; continue; }
-    const r = await fetch(m.url, { headers: { "User-Agent": UA } });
+    const r = await download(m.url);
     if (!r.ok) { console.error(`error: ${key}: download ${r.status}`); bad++; continue; }
     const svg = await r.text();
     if (!/<svg[\s>]/i.test(svg)) { console.error(`error: ${key}: not an SVG`); bad++; continue; }
     fs.writeFileSync(path.join(dir, `${key}.svg`), svg);
     Object.assign(s, { file: `assets/signs/${key}.svg`, source: m.descriptionurl, license: m.license, author: m.artist || "see source" });
     console.log(`ok ${key} <- ${s.commons} (${m.license}, ${(svg.length / 1024).toFixed(1)} KB)`);
-    await new Promise(res => setTimeout(res, 200));
+    await new Promise(res => setTimeout(res, 1500));
   }
   fs.writeFileSync(path.join(ROOT, "kb/signs.json"), JSON.stringify(signs, null, 1) + "\n");
   // candidates to inspect visually before choosing (not used by the game; removed before merge)
@@ -141,12 +154,12 @@ async function fetchChosen() {
     for (const t of titles) {
       const m = rm[t];
       if (!m) { console.log(`review: ${t} not found`); continue; }
-      const r = await fetch(m.url, { headers: { "User-Agent": UA } });
+      const r = await download(m.url);
       if (!r.ok) { console.log(`review: ${t} download ${r.status}`); continue; }
       const name = t.replace(/^File:/, "").replace(/[^A-Za-z0-9.-]+/g, "_");
       fs.writeFileSync(path.join(rdir, name), await r.text());
       console.log(`review ${name} | ${m.license} | ${m.desc.slice(0, 120)}`);
-      await new Promise(res => setTimeout(res, 200));
+      await new Promise(res => setTimeout(res, 1500));
     }
   }
   if (bad) process.exit(1);
