@@ -131,6 +131,24 @@ async function fetchChosen() {
     await new Promise(res => setTimeout(res, 200));
   }
   fs.writeFileSync(path.join(ROOT, "kb/signs.json"), JSON.stringify(signs, null, 1) + "\n");
+  // candidates to inspect visually before choosing (not used by the game; removed before merge)
+  const reviewFile = path.join(ROOT, "kb/signs-review.json");
+  if (fs.existsSync(reviewFile)) {
+    const titles = JSON.parse(fs.readFileSync(reviewFile, "utf8"));
+    const rm = await metadata(new Set(titles));
+    const rdir = path.join(dir, "_review");
+    fs.mkdirSync(rdir, { recursive: true });
+    for (const t of titles) {
+      const m = rm[t];
+      if (!m) { console.log(`review: ${t} not found`); continue; }
+      const r = await fetch(m.url, { headers: { "User-Agent": UA } });
+      if (!r.ok) { console.log(`review: ${t} download ${r.status}`); continue; }
+      const name = t.replace(/^File:/, "").replace(/[^A-Za-z0-9.-]+/g, "_");
+      fs.writeFileSync(path.join(rdir, name), await r.text());
+      console.log(`review ${name} | ${m.license} | ${m.desc.slice(0, 120)}`);
+      await new Promise(res => setTimeout(res, 200));
+    }
+  }
   if (bad) process.exit(1);
 }
 
