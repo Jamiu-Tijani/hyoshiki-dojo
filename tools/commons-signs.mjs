@@ -94,9 +94,19 @@ async function discover() {
       console.log(`  ${t} | ${m.license} | ${m.name} | ${m.desc.slice(0, 140)}`);
     }
   }
-  // compact index of every file so it can be grepped from the log
-  console.log("\n## ALL");
-  for (const [t, m] of Object.entries(meta).sort()) console.log(`  ${t} | ${m.license} | ${(m.name || m.desc).slice(0, 90)}`);
+  // details for specific files named in SHOW (comma-separated title fragments)
+  const show = (process.env.SHOW || "").split(",").map(x => x.trim()).filter(Boolean);
+  if (show.length) {
+    console.log("\n## SHOW");
+    for (const [t, m] of Object.entries(meta).sort()) if (show.some(f => t.includes(f))) console.log(`  ${t} | ${m.license} | ${m.desc.slice(0, 220)}`);
+  }
+  // search for extra files by free text (EXTRA, semicolon-separated queries)
+  for (const q of (process.env.EXTRA || "").split(";").map(x => x.trim()).filter(Boolean)) {
+    const hits = await searchTitles(q);
+    const mm = await metadata(hits);
+    console.log(`\n## EXTRA "${q}" — ${hits.size}`);
+    for (const [t, m] of Object.entries(mm).slice(0, 15)) console.log(`  ${t} | ${m.license} | ${(m.desc || m.name).slice(0, 160)}`);
+  }
 }
 
 async function fetchChosen() {

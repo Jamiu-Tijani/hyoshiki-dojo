@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: 22
       - run: node tools/commons-signs.mjs discover
+        env:
+          SHOW: "road sign 305.svg,road sign 311-,road sign 330,road sign 404,road sign 405,road sign 207-,road sign 208,road sign 406.svg,road sign 407-A,road sign 326-A,road sign 329-A,road sign 105-A"
+          EXTRA: "left turn japan traffic signal;左折可 標示板;japan traffic light left arrow board"
   fetch:
     if: contains(github.event.head_commit.message, '[fetch-signs]')
     runs-on: ubuntu-latest
