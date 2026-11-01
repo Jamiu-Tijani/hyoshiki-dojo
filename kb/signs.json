@@ -133,18 +133,38 @@
   "author": "Widehawk ( talk ), pumpCurry (Font \"GD-HighwayGothicJA\")"
  },
  "shitei_s": {
-  "commons": "File:Japan road sign 311-C.svg"
+  "commons": "File:Japan road sign 311-C.svg",
+  "file": "assets/signs/shitei_s.svg",
+  "source": "https://commons.wikimedia.org/wiki/File:Japan_road_sign_311-C.svg",
+  "license": "Public domain",
+  "author": "Monaneko"
  },
  "shitei_l": {
-  "commons": "File:Japan road sign 311-B-L.svg"
+  "commons": "File:Japan road sign 311-B-L.svg",
+  "file": "assets/signs/shitei_l.svg",
+  "source": "https://commons.wikimedia.org/wiki/File:Japan_road_sign_311-B-L.svg",
+  "license": "Public domain",
+  "author": "Monaneko"
  },
  "shitei_sl": {
-  "commons": "File:Japan road sign 311-A-L.svg"
+  "commons": "File:Japan road sign 311-A-L.svg",
+  "file": "assets/signs/shitei_sl.svg",
+  "source": "https://commons.wikimedia.org/wiki/File:Japan_road_sign_311-A-L.svg",
+  "license": "Public domain",
+  "author": "Monaneko"
  },
  "ippo": {
-  "commons": "File:Japan road sign 326-A-L.svg"
+  "commons": "File:Japan road sign 326-A-L.svg",
+  "file": "assets/signs/ippo.svg",
+  "source": "https://commons.wikimedia.org/wiki/File:Japan_road_sign_326-A-L.svg",
+  "license": "Public domain",
+  "author": "Monaneko"
  },
  "chusha_ka": {
-  "commons": "File:Japanese Road sign (Parking lot A, Parking permitted).svg"
+  "commons": "File:Japanese Road sign (Parking lot A, Parking permitted).svg",
+  "file": "assets/signs/chusha_ka.svg",
+  "source": "https://commons.wikimedia.org/wiki/File:Japanese_Road_sign_(Parking_lot_A,_Parking_permitted).svg",
+  "license": "Public domain",
+  "author": "Widehawk ( talk )"
  }
 }
