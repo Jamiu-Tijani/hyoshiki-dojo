@@ -1,0 +1,8 @@
+[
+  {"id":"mark.kinds","en":"Road markings come in two kinds: regulatory markings (規制標示) ban or require; instruction markings (指示標示) show what you may do or where things are.","ja":"標示には規制標示と指示標示の2種類がある。","refs":[{"src":"kyosoku","loc":"第1章第2節 3(1)–(2)"}],"status":"primary"},
+  {"id":"mark.edge.yellow","en":"A solid yellow line along the road edge means no stopping or parking.","ja":"路端の黄色の実線：駐停車禁止。","refs":[{"src":"kyosoku","loc":"付表3"}],"status":"unverified"},
+  {"id":"mark.edge.yellowdash","en":"A broken yellow line along the road edge means no parking. Brief stops are allowed.","ja":"路端の黄色の破線：駐車禁止。","refs":[{"src":"kyosoku","loc":"付表3"}],"status":"unverified"},
+  {"id":"mark.lanearrows","en":"Arrows painted in a lane (進行方向別通行区分) say where traffic in that lane may go.","ja":"進行方向別通行区分：通行帯ごとに進行できる方向が指定される。","refs":[{"src":"kyosoku","loc":"付表3"}],"status":"unverified"},
+  {"id":"mark.diamond","en":"A diamond (◇) marking means a crosswalk or bicycle crossing ahead.","ja":"ひし形（◇）の標示：前方に横断歩道又は自転車横断帯がある。","refs":[{"src":"kyosoku","loc":"付表3"}],"status":"unverified"},
+  {"id":"mark.nostopzone","en":"Don't enter a no-stopping zone marking (停止禁止部分) if traffic ahead might leave you stopped inside it.","ja":"停止禁止部分：前方が混雑していてその中で停止するおそれがあるときは入ってはならない。","refs":[{"src":"rta","loc":"第50条"},{"src":"iac","loc":"P53"}],"status":"secondary"}
+]

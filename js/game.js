@@ -31,6 +31,17 @@ function record(ok){
   if(!(key in p)) p[key]=ok&&first;
   else if(ok&&first) p[key]=true;
   save(); renderTabs();
+  Track.answer({key:itemKey(),chapter:chap().id,level:lv().id,ok,first,label:itemLabel()});
+}
+function itemKey(){return Track.keyFor(chap().id,lv().id,item());}
+function itemLabel(){
+  const it=item(), L=lv(), strip=t=>String(t).replace(/<[^>]+>/g,"");
+  let t= typeof it==="string" ? (SIGNS[it]?SIGNS[it].jp:it)
+       : it.show||it.word||it.q||(it.sign&&SIGNS[it.sign]&&SIGNS[it.sign].jp)
+         ||(it.goal&&it.sig&&`${GOALW[it.goal]} on ${signalWords[it.sig]}`)
+         ||(it.hud&&it.hud.map(h=>h[1]).join(", "))||(it.dir&&(it.dir==="in"?"Into a car park":"Out of a car park"))||"";
+  t=strip(t); if(t.length>38)t=t.slice(0,37)+"…";
+  return `${L.n} · ${t||"item "+(order[idx]+1)}`;
 }
 
 function renderChapters(){
@@ -71,12 +82,22 @@ function shell(prompt,hint){
    <div class="row" id="ctrl"></div>`;
   if(!keepFirst)firstTry=true;
   keepFirst=false;answered=false;
+  Track.start(itemKey());
   return $("#body");
 }
-function refText(ref){if(!ref)return "";return /^(施行令|道路交通法)/.test(ref)?ref:chap().src+" "+ref;}
+const STATUS_LABEL={primary:"Verified in the 教則",secondary:"From a secondary source",unverified:"Unverified: check your textbook"};
+function citeHTML(ruleIds){
+  const rs=[].concat(ruleIds||[]).filter(Boolean).map(id=>KB.rules[id]).filter(Boolean);
+  if(!rs.length)return "";
+  const worst=["unverified","secondary","primary"].find(st=>rs.some(r=>r.status===st));
+  const refs=[],seen=new Set();
+  for(const r of rs)for(const x of r.refs){const S=KB.sources[x.src];if(!S||x.src==="general")continue;const t=S.short+(x.loc?" "+x.loc:"");if(seen.has(t))continue;seen.add(t);
+    refs.push(S.url?`<a href="${S.url}" target="_blank" rel="noopener">${t}</a>`:t);}
+  return `<span class="src"><span class="badge st-${worst}" title="${rs.map(r=>r.id+": "+r.status).join(", ")}">${STATUS_LABEL[worst]}</span>${refs.length?" "+refs.join(" · "):""}</span>`;
+}
 function feedback(ok,why,ref,{retry=true}={}){
   answered=ok;
-  $("#fb").innerHTML=`<div class="feedback ${ok?"ok":"bad"}"><span class="verdict">${ok?"Correct":"Not quite"}</span><span>${why}</span>${ref?`<span class="src">${refText(ref)}</span>`:""}</div>`;
+  $("#fb").innerHTML=`<div class="feedback ${ok?"ok":"bad"}"><span class="verdict">${ok?"Correct":"Not quite"}</span><span>${why}</span>${citeHTML(ref)}</div>`;
   record(ok);
   const c=$("#ctrl");c.innerHTML="";
   if(!ok&&retry){const r=document.createElement("button");r.className="btn";r.id="retry";r.textContent="Try again";r.onclick=()=>{firstTry=false;keepFirst=true;renderScenario();};c.appendChild(r);}
@@ -114,7 +135,7 @@ function renderSort(){
   const judge=(c)=>{
     if(answered||done)return;done=true;
     const ok=c===S.cat;
-    feedback(ok,`<b>${S.jp}</b> · ${S.en}. ${ok?"":`It is a <b>${CAT[S.cat][0]}</b> (${CAT[S.cat][1].toLowerCase()} sign). `}${CAT_WHY[S.cat]}`,CAT_SRC[S.cat],{retry:false});
+    feedback(ok,`<b>${S.jp}</b> · ${S.en}. ${ok?"":`It is a <b>${CAT[S.cat][0]}</b> (${CAT[S.cat][1].toLowerCase()} sign). `}${KB.rules["sign.kind."+S.cat].en}`,["sign.kinds","sign.kind."+S.cat],{retry:false});
     $("#sc").style.visibility=ok?"hidden":"visible";
   };
   body.querySelectorAll(".bin").forEach(b=>b.onclick=()=>judge(b.dataset.cat));
@@ -150,7 +171,7 @@ function renderPlate(){
     const t=el("text",{x:Z.x+Z.w/2,y:Z.y+Z.h/2+4,"text-anchor":"middle","font-size":12,"font-weight":700,fill:"#dce7ff","font-family":"sans-serif"},f);t.textContent=Z.label;}
   const home={x:160,y:315};let car=carG(f,home.x,home.y);let pos={...home},drag=false;
   const place=(z)=>{if(answered)return;const Z=zones[z];pos={x:Z.x+Z.w/2,y:Z.y+Z.h/2};car.setAttribute("transform",`translate(${pos.x} ${pos.y}) rotate(${z==="east"?90:0})`);
-    const ok=z===s.ok;feedback(ok,s.why,s.ref);};
+    const ok=z===s.ok;feedback(ok,s.why,s.rule);};
   const hit=(p)=>{for(const z in zones){const Z=zones[z];if(p.x>=Z.x&&p.x<=Z.x+Z.w&&p.y>=Z.y&&p.y<=Z.y+Z.h)return z;}return null;};
   f.addEventListener("pointerdown",e=>{if(answered)return;const p=svgPt(f,e);
     if(Math.hypot(p.x-pos.x,p.y-pos.y)<40){drag=true;f.setPointerCapture(e.pointerId);}else{const z=hit(p);if(z)place(z);}});
@@ -197,7 +218,7 @@ function renderSignal(){
     if(ok&&res.lane===false){ok=false;why=`You ended in the lane for oncoming traffic. In Japan you keep left, so after the turn you join the left-hand lane. `+why;}
     else if(!ok&&res.kind==="straight"&&s.ok.includes("stopgo"))why="You went straight without stopping. "+why;
     else if(!ok&&res.kind==="stop"&&s.ok.includes("stopgo"))why="Stopping is right, but you may then continue. "+why;
-    feedback(ok,why,s.ref);
+    feedback(ok,why,s.rule);
     if(ok&&line)animate(car,line);
   };
   f.addEventListener("pointerdown",e=>{if(answered)return;const p=svgPt(f,e);
@@ -254,7 +275,7 @@ function renderStop(){
       else if(s.cross&&front<G.cwS.y1)why="The front of the car is on the crosswalk. "+why;
       else why="You went past the stop position. "+why;
     }else if(front>hi)why="You stopped well short. Pull up to just before the stop position. "+why;
-    feedback(ok,why,s.ref);
+    feedback(ok,why,s.rule);
   };
 }
 
@@ -348,7 +369,7 @@ function renderBans(){
       if(extra.length)parts.push(`Still allowed: ${extra.map(k=>MOVES[k].label.toLowerCase()).join(", ")}.`);
       why=parts.join(" ")+" "+why;
     }
-    feedback(ok,why,s.ref);
+    feedback(ok,why,s.rule);
   };
 }
 
@@ -399,7 +420,7 @@ function renderApproach(){
     if(v<s.min)parts.push(s.min>0?(v===0?"You don't need to stop here.":"Too slow."):"");
     if(v>s.max)parts.push(s.max===0?`You must stop here, not drive through at ${v} km/h.`:`${v} km/h is too fast here.`);
     if(h!==s.horn)parts.push(s.horn?"You also needed to sound the horn.":"The horn wasn't called for.");
-    feedback(ok,(ok?"":parts.filter(Boolean).join(" ")+" ")+s.why,s.ref);
+    feedback(ok,(ok?"":parts.filter(Boolean).join(" ")+" ")+s.why,s.rule);
     if(h){const t=el("text",{x:x+28,y:300,"font-size":14,"font-weight":700,fill:"#ffd76a","font-family":"sans-serif"},f);t.textContent="プッ ♪";}
     const endY=v===0?(lineY?lineY+27:250):-60;
     if(reduceMotion){car.setAttribute("transform",`translate(${x} ${endY})`);return;}
@@ -420,7 +441,7 @@ function renderTF(){
   const judge=a=>{
     if(answered||done)return;done=true;
     const ok=a===s.a;
-    feedback(ok,`Answer: <b>${s.a?"〇":"×"}</b>. ${s.why}`,s.ref,{retry:false});
+    feedback(ok,`Answer: <b>${s.a?"〇":"×"}</b>. ${s.why}`,s.rule,{retry:false});
     if(!ok)requeue();
   };
   body.querySelectorAll(".tfbin").forEach(b=>b.onclick=()=>judge(b.dataset.a==="true"));
@@ -575,7 +596,7 @@ function renderLanes(){
     const ok=s.ok.includes(i);
     let why=s.why;
     if(!ok&&s.lanes[i].dir==="down")why="That is the oncoming half of the road. "+why;
-    feedback(ok,why,s.ref);
+    feedback(ok,why,s.rule);
   };
   f.addEventListener("pointerdown",e=>{if(answered)return;const p=svgPt(f,e);
     if(Math.hypot(p.x-pos.x,p.y-pos.y)<40){drag=true;f.setPointerCapture(e.pointerId);}
@@ -634,7 +655,7 @@ function renderKerb(){
       if(fr>K.walk0)why=(fr>K.walk1?"You drove across the pavement without stopping. ":"The front of the car is on the pavement. ")+why;
       else if(!ok)why="You stopped well back from the pavement. Pull up to just before it. "+why;
     }
-    feedback(ok,why,s.ref);
+    feedback(ok,why,s.rule);
   };
 }
 
@@ -643,12 +664,53 @@ function renderScenario(){
   ({sort:renderSort,plate:renderPlate,signal:renderSignal,stoppos:renderStop,bans:renderBans,approach:renderApproach,tf:renderTF,match:renderMatch,build:renderBuild,lanes:renderLanes,kerb:renderKerb})[k]();
 }
 
+/* ---------- history (session tracking) ---------- */
+function fmtDur(ms){const m=Math.round(ms/60000);return m<1?"<1 min":m<60?`${m} min`:`${Math.floor(m/60)} h ${m%60} min`;}
+function fmtWhen(t){try{return new Date(t).toLocaleString("en-GB",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return new Date(t).toISOString().slice(0,16);}}
+const pct=(a,b)=>b?Math.round(a*100/b)+"%":"—";
+function renderHistory(){
+  const now=Track.current(), tot=Track.totals(), list=Track.sessions().slice(-10).reverse(), weak=Track.weakest(6);
+  const chapName=id=>{const C=CHAPTERS.find(c=>c.id===id);return C?(C.tag||"Ch "+C.n):id;};
+  $("#card").innerHTML=`
+    <div class="lvl-head"><h2>History</h2><span class="count">Saved in this browser</span></div>
+    <div class="stats">
+      <div class="stat"><span class="lbl">This session</span><span class="big2">${now?now.answers:0}</span><span class="hint">${now?`answers · ${pct(now.firstCorrect,now.firstAnswers)} first try · ${fmtDur(now.ms)}`:"No answers yet"}</span></div>
+      <div class="stat"><span class="lbl">All time</span><span class="big2">${tot.answers}</span><span class="hint">answers · ${pct(tot.firstCorrect,tot.firstAnswers)} first try · ${tot.sessions} session${tot.sessions===1?"":"s"} · ${fmtDur(tot.ms)}</span></div>
+    </div>
+    <h3 class="h3">Recent sessions</h3>
+    ${list.length?`<div class="tablewrap"><table class="hist"><thead><tr><th>Started</th><th>Time</th><th>Ans.</th><th>1st try</th><th>Ch.</th></tr></thead><tbody>
+      ${list.map(s=>`<tr><td>${fmtWhen(s.start)}</td><td>${fmtDur(s.ms)}</td><td>${s.answers}</td><td>${pct(s.firstCorrect,s.firstAnswers)}</td><td>${[...new Set(Object.keys(s.levels).map(k=>chapName(k.split("/")[0]).replace("Ch ","")))].join(", ")}</td></tr>`).join("")}
+      </tbody></table></div>`:`<p class="hint">Play any level and your sessions will show up here. A new session starts after 30 minutes without an answer.</p>`}
+    <h3 class="h3">Needs work</h3>
+    ${weak.length?`<ul class="weak">${weak.map(w=>`<li><span>${w.label||w.key}</span><span class="hint">${chapName(w.lvl.split("/")[0])} · ${w.firstOk}/${w.firstN} first try</span></li>`).join("")}</ul>`:`<p class="hint">Nothing yet. Items you miss on the first try will be listed here.</p>`}
+    <div class="row">
+      <button class="btn" id="hclear" type="button">Clear history</button>
+      <button class="btn" id="hexport" type="button">Export JSON</button>
+      <button class="btn primary" id="hback" type="button">Back to the level</button>
+    </div>
+    <div id="hconfirm"></div>`;
+  $("#hback").onclick=()=>{$("#history-btn").setAttribute("aria-pressed","false");renderScenario();};
+  $("#hexport").onclick=()=>{
+    try{const blob=new Blob([Track.exportJSON()],{type:"application/json"});const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);a.download=`hyoshiki-dojo-history-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}catch(e){}
+  };
+  $("#hclear").onclick=()=>{
+    $("#hconfirm").innerHTML=`<div class="feedback bad"><span>This deletes all session history and per-item stats in this browser. Level scores on the tabs are kept.</span>
+      <div class="row"><button class="btn" id="hcancel" type="button">Keep it</button><button class="btn primary" id="hyes" type="button">Delete history</button></div></div>`;
+    $("#hcancel").onclick=()=>{$("#hconfirm").innerHTML="";};
+    $("#hyes").onclick=()=>{Track.clear();renderHistory();};
+  };
+}
+
 /* ---------- boot ---------- */
 (function boot(){
   const fromHash=(location.hash||"").slice(1), last=store.get("hyoshiki-dojo-chapter","ch1");
   let i=CHAPTERS.findIndex(c=>c.id===fromHash);
   if(i<0)i=CHAPTERS.findIndex(c=>c.id===last);
   loadChapter(i<0?0:i);
+  const hb=$("#history-btn");
+  hb.onclick=()=>{const on=hb.getAttribute("aria-pressed")!=="true";hb.setAttribute("aria-pressed",on);on?renderHistory():renderScenario();};
   window.addEventListener("hashchange",()=>{
     const j=CHAPTERS.findIndex(c=>c.id===location.hash.slice(1));
     if(j>=0&&j!==chi)loadChapter(j);

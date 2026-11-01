@@ -21,12 +21,9 @@ Known changes after the 2024 consolidation that later chapters must patch in:
 - **1 Apr 2026:** new rule on how vehicles pass cyclists on the right.
 - **1 Sep 2026:** default speed on residential roads (生活道路) drops from 60 to 30 km/h.
 
-### Not yet verified against primary text
+### Verification status
 
-- The wording of the yellow-light exception and the flashing-light rules (施行令 第2条) comes from secondary sources.
-- The abbreviation 大貨 (付表4) was not checked against the source table.
-- **Chapter 1 v2 (levels 1.5–1.7).** Sign and marking meanings come from the sign standard and the Road Traffic Act as taught in driving-school material, not from 付表3 itself (the PDF can't be read that far). The article numbers cited in feedback (第2条, 第37条, 第38条, 第43条, 第50条, 第54条) were not checked against the statute text. "徐行 ≈ 10 km/h or less" is a teaching guideline, not law; the game says so.
-- **Chapter 2 as a whole.** The published 教則 PDF can't be read past 第4章, so Chapter 2 uses the Road Traffic Act articles that 第5章第2節 restates (第17条, 第18条, 第20条, 第20条の2), as summarised in driving-school study material and police guidance. Two rules rest on general knowledge, not on a source I read: a yellow centre line still lets you go round an obstruction (2.1), and a yellow lane line bans lane changes (2.2, 第26条の2). Both say "check against your textbook" in the game.
+Every rule the game teaches lives in [`kb/`](kb/) with a status: **primary** (confirmed in official text that was actually read), **secondary** (police or driving-school source citing the law) or **unverified** (general knowledge). The game shows the status on every answer. The current breakdown and the list of rules to check first are in [`kb/STATUS.md`](kb/STATUS.md), generated from the data.
 
 ## Chapters
 
@@ -46,14 +43,32 @@ Known changes after the 2024 consolidation that later chapters must patch in:
 ## Layout
 
 ```
+kb/sources.json  every source the rules cite
+kb/rules/*.json  the rules: en/ja statement, refs, status (one file per topic)
+kb/vocab/*.json  sign vocabulary for the bonus chapter
+kb/STATUS.md     generated verification report
+tools/build-kb.mjs  validates kb/ and levels, generates js/kb.js + kb/STATUS.md
+tests/e2e.py     plays every item; checks scoring and session tracking
 index.html       page shell
 css/style.css    theme tokens (light/dark) and layout
 js/render.js     sign artwork, signal heads, road scenes
 levels/ch1.js    Chapter 1 scenario data, with source refs
 levels/ch2.js    Chapter 2 scenario data (lane scenarios are pure data)
 levels/bonus.js  Bonus kanji vocabulary (word lists turned into levels)
-js/game.js       state, level runners, progress saving
+js/kb.js         GENERATED knowledge base bundle
+js/track.js      session tracking (localStorage)
+js/game.js       state, level runners, progress saving, History panel
 ```
+
+### Working on content
+
+1. Edit or add a rule in `kb/rules/`. Level items reference rules by id (`rule:"sig.yellow"` or an array).
+2. Run `node tools/build-kb.mjs`. It fails on unknown rule ids, bad statuses, missing sources, or kanji build tiles that don't spell their word.
+3. Run `python3 tests/e2e.py` (Playwright) to play every item.
+
+### Session tracking
+
+`js/track.js` stores, in this browser only: sessions (a new one starts after 30 minutes without an answer; last 200 kept), and per-item stats (attempts, first-try results, time, last seen). Item keys hash the item's own data, so they survive reordering. The History button shows this session, all-time totals, recent sessions and the items you miss most, with Export JSON and Clear.
 
 Scripts are plain classic scripts loaded in order and share top-level constants, so the page runs from `file://` without a bundler.
 

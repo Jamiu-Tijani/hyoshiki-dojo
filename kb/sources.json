@@ -1,0 +1,78 @@
+{
+  "kyosoku": {
+    "short": "教則",
+    "title": "交通の方法に関する教則",
+    "publisher": "National Police Agency (国家公安委員会告示)",
+    "version": "Consolidated to the 4 Sep 2024 amendment (告示第37号)",
+    "url": "https://www.npa.go.jp/bureau/traffic/20241113kyousoku.pdf",
+    "kind": "primary",
+    "note": "Only readable up to 第4章第3節 through the tools used; 付表 not readable."
+  },
+  "rta": {
+    "short": "道路交通法",
+    "title": "道路交通法 (Road Traffic Act)",
+    "publisher": "e-Gov",
+    "url": "https://laws.e-gov.go.jp/law/335AC0000000105",
+    "kind": "primary",
+    "note": "Statute text not read directly; articles cited via secondary sources."
+  },
+  "rta-order": {
+    "short": "施行令",
+    "title": "道路交通法施行令 (Enforcement Order)",
+    "publisher": "e-Gov",
+    "url": "https://laws.e-gov.go.jp/law/335CO0000000270",
+    "kind": "primary",
+    "note": "Statute text not read directly (access request timed out)."
+  },
+  "kobe-ds": {
+    "short": "Kobe Drivers Support",
+    "title": "車が通行するところ 車が通行してはいけないところ",
+    "publisher": "Kobe Drivers Support (driving-school study sheet)",
+    "url": "https://www.kobe-drivers-support.com/doc/department-passable-inpassable.pdf",
+    "kind": "secondary"
+  },
+  "iac": {
+    "short": "IAC driving school",
+    "title": "教習項目４【車が通行するところ、車が通行してはいけないところ】",
+    "publisher": "IAC driving school",
+    "url": "https://www.iac-ds.co.jp/oyakudachi01004/",
+    "kind": "secondary"
+  },
+  "mpd-signs": {
+    "short": "Tokyo MPD",
+    "title": "道路標識・道路標示",
+    "publisher": "Tokyo Metropolitan Police Department",
+    "url": "https://www.keishicho.metro.tokyo.lg.jp/kotsu/mark/hyoshiki.html",
+    "kind": "secondary"
+  },
+  "akita-bus": {
+    "short": "Akita police",
+    "title": "バスレーン資料",
+    "publisher": "Akita Prefectural Police",
+    "url": "https://www.police.pref.akita.lg.jp/uploads/contents/news_0000004645_00/%E3%83%90%E3%82%B9%E3%83%AC%E3%83%BC%E3%83%B3%E8%B3%87%E6%96%99.PDF",
+    "kind": "secondary"
+  },
+  "kn-flash": {
+    "short": "Kuruma News",
+    "title": "赤・黄の「点滅信号」の意味",
+    "publisher": "Kuruma News",
+    "url": "https://kuruma-news.jp/post/428898",
+    "kind": "secondary",
+    "note": "Quotes 道路交通法施行令 第2条."
+  },
+  "kn-bus": {
+    "short": "Kuruma News",
+    "title": "バスレーンの「優先」「専用」何が違う?",
+    "publisher": "Kuruma News",
+    "url": "https://kuruma-news.jp/post/605892",
+    "kind": "secondary",
+    "note": "Paraphrases 道路交通法 第20条の2."
+  },
+  "general": {
+    "short": "General knowledge",
+    "title": "General driving-school knowledge",
+    "publisher": "—",
+    "kind": "none",
+    "note": "Not checked against any source in this project. Verify against the school textbook."
+  }
+}
