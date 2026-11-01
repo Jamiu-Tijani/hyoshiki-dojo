@@ -133,10 +133,18 @@ export async function mountApproach(host: HTMLElement, o: ApproachOptions): Prom
   app.stage.addChild(car);
   const brake = car.getChildByLabel("brake") as Graphics;
 
-  /* idle: a slight engine idle wobble */
-  const idle = o.reducedMotion ? null : gsap.to(car, { y: CAR_Y - 0.6, duration: 0.12, repeat: -1, yoyo: true, ease: "sine.inOut" });
-
+  /* Every animation is registered here so destroy() can stop all of them before the
+     Pixi objects go away; a tween writing to a destroyed object throws. */
   let destroyed = false;
+  const anims = new Set<gsap.core.Animation>();
+  const track = <T extends gsap.core.Animation>(a: T): T => {
+    anims.add(a);
+    a.eventCallback("onComplete", () => anims.delete(a));
+    return a;
+  };
+
+  /* idle: a slight engine idle wobble */
+  const idle = o.reducedMotion ? null : track(gsap.to(car, { y: CAR_Y - 0.6, duration: 0.12, repeat: -1, yoyo: true, ease: "sine.inOut" }));
   let hum: ReturnType<typeof engineHum> | null = null;
 
   function popHorn(): void {
@@ -144,8 +152,8 @@ export async function mountApproach(host: HTMLElement, o: ApproachOptions): Prom
     t.position.set(LANE_X + 22, CAR_Y - 30);
     app.stage.addChild(t);
     if (o.reducedMotion) return;
-    gsap.fromTo(t, { alpha: 0, y: CAR_Y - 20 }, { alpha: 1, y: CAR_Y - 44, duration: 0.25, ease: "back.out(2)" });
-    gsap.to(t, { alpha: 0, duration: 0.4, delay: 0.9 });
+    track(gsap.fromTo(t, { alpha: 0, y: CAR_Y - 20 }, { alpha: 1, y: CAR_Y - 44, duration: 0.25, ease: "back.out(2)" }));
+    track(gsap.to(t, { alpha: 0, duration: 0.4, delay: 0.9 }));
   }
 
   return {
@@ -161,33 +169,33 @@ export async function mountApproach(host: HTMLElement, o: ApproachOptions): Prom
       hum = engineHum(speed === 0 ? 30 : speed);
       if (speed === 0) {
         // approach at 30 km/h, then brake to a stop at the line
-        const tl = gsap.timeline();
+        const tl = track(gsap.timeline());
         tl.to(world, { y: stopAt - 90, duration: 0.9, ease: "none" })
           .to(world, {
             y: stopAt, duration: 1.1, ease: "power2.out",
-            onStart: () => { gsap.to(brake, { alpha: 1, duration: 0.15 }); hum?.setSpeed(8); },
+            onStart: () => { if (destroyed) return; track(gsap.to(brake, { alpha: 1, duration: 0.15 })); hum?.setSpeed(8); },
           })
           .to(car, { y: CAR_Y + 2, duration: 0.12, yoyo: true, repeat: 1, ease: "sine.inOut" }, "-=0.1");
         await tl;
         hum.stop();
         if (ped && !destroyed) {
           // with the car stopped, the pedestrian crosses
-          await gsap.to(ped, { x: 270, duration: 2.2, ease: "none" });
+          await track(gsap.to(ped, { x: 270, duration: 2.2, ease: "none" }));
         }
         return;
       }
       // keep going past the line; distance per second scales with speed
       const pxPerSec = 6 + speed * 6;
       const dist = 900;
-      await gsap.to(world, { y: dist, duration: dist / pxPerSec, ease: "power1.in" });
+      await track(gsap.to(world, { y: dist, duration: dist / pxPerSec, ease: "power1.in" }));
       hum.stop();
     },
     destroy() {
       if (destroyed) return;
       destroyed = true;
       hum?.stop();
-      gsap.killTweensOf([world, car, brake, ped].filter(Boolean));
-      idle?.kill();
+      for (const a of anims) a.kill();
+      anims.clear();
       app.destroy(true, { children: true, texture: true, textureSource: true });
     },
   };
