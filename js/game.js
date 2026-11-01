@@ -71,7 +71,21 @@ function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor
 function startLevel(){idx=0;requeued=new Set();const L=lv(),ix=L.items.map((_,i)=>i);order=(L.id==="sort"||["tf","match","build"].includes(L.kind))?shuffle(ix):ix;renderTabs();renderScenario();}
 function item(){return lv().items[order[idx]];}
 
+/* ---------- immersive engine (PixiJS + GSAP), loaded on demand ---------- */
+let enginePromise=null, scene=null;
+function loadEngine(){
+  if(enginePromise)return enginePromise;
+  if(location.protocol==="file:"||window.HD_NO_ENGINE){enginePromise=Promise.resolve(null);return enginePromise;}
+  enginePromise=import(new URL("engine/engine.js",document.baseURI).href)
+    .then(E=>{E.setMuted(!soundOn());return E;})
+    .catch(e=>{console.info("Engine not available, using SVG scenes:",e&&e.message);return null;});
+  return enginePromise;
+}
+function dropScene(){if(scene){try{scene.destroy();}catch(e){}scene=null;}}
+function soundOn(){return store.get("hd.sound","on")!=="off";}
+
 function shell(prompt,hint){
+  dropScene();
   const L=lv();
   $("#card").innerHTML=`
    <div class="lvl-head"><h2>${L.n} ${L.title}</h2><span class="count">${idx<L.items.length?`${idx+1} of ${L.items.length}`:"Review"}</span></div>
@@ -381,7 +395,7 @@ function renderApproach(){
      (s.peds?`<div class="item"><span class="lbl">Ahead</span><span class="hv">A pedestrian waiting at the crosswalk</span></div>`:"")+
      (s.curve?`<div class="item"><span class="lbl">Ahead</span><span class="hv">Blind bend · limit ${s.limit} km/h</span></div>`:"")+
      (s.stopLine?`<div class="item"><span class="lbl">Ahead</span><span class="hv">Junction, no traffic in sight</span></div>`:""))+
-    `<svg class="field" id="f" viewBox="0 0 360 360" aria-label="road approach"></svg>
+    `<div class="pxhost" id="px" hidden></div><svg class="field" id="f" viewBox="0 0 360 360" aria-label="road approach"></svg>
      <div class="controls">
        <label for="spd" class="lbl">Speed</label>
        <input type="range" id="spd" min="0" max="60" step="5" value="30" aria-describedby="spdv">
@@ -409,6 +423,10 @@ function renderApproach(){
   el("line",{x1:91,y1:228,x2:91,y2:250,stroke:"#9aa0a6","stroke-width":3},f);
   const x=150; const car=carG(f,x,318);
   const spd=$("#spd"), out=$("#spdv"), horn=$("#horn");
+  const px=$("#px"), myItem=s;
+  loadEngine().then(E=>E&&E.mountApproach(px,{signSvg:SIGNS[s.sign].svg,stopLine:!!s.stopLine,crosswalk:!!s.crosswalk,peds:!!s.peds,curve:!!s.curve,reducedMotion:reduceMotion}))
+    .then(sc=>{if(!sc)return;if(!px.isConnected||item()!==myItem||answered){sc.destroy();return;}scene=sc;px.hidden=false;f.setAttribute("hidden","");})
+    .catch(e=>console.warn("Pixi scene failed, keeping SVG:",e));
   const lbl=v=>v==0?"0 km/h · stop":`${v} km/h`;
   spd.oninput=()=>{out.textContent=lbl(spd.value);};
   horn.onclick=()=>{if(answered)return;const on=horn.getAttribute("aria-pressed")!=="true";horn.setAttribute("aria-pressed",on);horn.textContent=on?"Horn: ON":"Horn: off";};
@@ -421,6 +439,7 @@ function renderApproach(){
     if(v>s.max)parts.push(s.max===0?`You must stop here, not drive through at ${v} km/h.`:`${v} km/h is too fast here.`);
     if(h!==s.horn)parts.push(s.horn?"You also needed to sound the horn.":"The horn wasn't called for.");
     feedback(ok,(ok?"":parts.filter(Boolean).join(" ")+" ")+s.why,s.rule);
+    if(scene){scene.drive({speed:v,horn:h});return;}
     if(h){const t=el("text",{x:x+28,y:300,"font-size":14,"font-weight":700,fill:"#ffd76a","font-family":"sans-serif"},f);t.textContent="プッ ♪";}
     const endY=v===0?(lineY?lineY+27:250):-60;
     if(reduceMotion){car.setAttribute("transform",`translate(${x} ${endY})`);return;}
@@ -709,6 +728,10 @@ function renderHistory(){
   let i=CHAPTERS.findIndex(c=>c.id===fromHash);
   if(i<0)i=CHAPTERS.findIndex(c=>c.id===last);
   loadChapter(i<0?0:i);
+  const sb=$("#sound-btn");
+  const paintSound=()=>{const on=soundOn();sb.setAttribute("aria-pressed",on);sb.textContent=on?"Sound on":"Sound off";};
+  paintSound();
+  sb.onclick=()=>{store.set("hd.sound",soundOn()?"off":"on");paintSound();if(enginePromise)enginePromise.then(E=>E&&E.setMuted(!soundOn()));};
   const hb=$("#history-btn");
   hb.onclick=()=>{const on=hb.getAttribute("aria-pressed")!=="true";hb.setAttribute("aria-pressed",on);on?renderHistory():renderScenario();};
   window.addEventListener("hashchange",()=>{

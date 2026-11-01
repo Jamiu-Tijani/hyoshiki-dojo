@@ -1,0 +1,55 @@
+name: ci
+on:
+  push:
+    branches: [main, rebuild]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Knowledge base check
+        run: npm run kb:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Bundle report
+        run: |
+          echo "### Bundle" >> $GITHUB_STEP_SUMMARY
+          echo '| file | raw KB | gzip KB |' >> $GITHUB_STEP_SUMMARY
+          echo '|---|---|---|' >> $GITHUB_STEP_SUMMARY
+          for f in dist/engine/*.js; do echo "| $(basename $f) | $(( $(wc -c <$f)/1024 )) | $(( $(gzip -9 -c $f | wc -c)/1024 )) |" >> $GITHUB_STEP_SUMMARY; done
+          ls -la dist/engine | head -40
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package-lock
+          path: package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Playwright
+        run: pip install playwright==1.48.0 && python -m playwright install --with-deps chromium
+      - name: End-to-end (built site over http, engine expected)
+        run: |
+          python -m http.server 4173 --directory dist >/dev/null 2>&1 &
+          sleep 1
+          HD_URL=http://127.0.0.1:4173/ HD_EXPECT_ENGINE=1 python tests/e2e.py
+      - name: End-to-end (SVG fallback, engine disabled)
+        run: |
+          python -m http.server 4174 --directory dist >/dev/null 2>&1 &
+          sleep 1
+          HD_URL=http://127.0.0.1:4174/ python tests/e2e.py --no-engine

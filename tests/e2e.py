@@ -4,11 +4,13 @@ answers one item wrong per level, and checks session tracking.
     python3 tests/e2e.py            (needs: pip install playwright; a Chromium build)
 
 Exits non-zero on any failure. Uses file:// so no server is needed."""
-import asyncio, json, pathlib, sys, time
+import asyncio, json, os, pathlib, sys, time
 from playwright.async_api import async_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-URL = (ROOT / "index.html").as_uri()
+URL = os.environ.get("HD_URL") or (ROOT / "index.html").as_uri()
+EXPECT_ENGINE = os.environ.get("HD_EXPECT_ENGINE") == "1"
+engine_scenes = 0
 LBL = {"straight": "Go straight", "left": "Turn left", "right": "Turn right", "uturn": "U-turn",
        "park": "Park 駐車", "stop": "Stop 停車"}
 fails = []
@@ -52,6 +54,13 @@ async def play_level(pg, ch, L):
                 await pg.locator(f".move[aria-label='{LBL[k]}'] .hit").click(force=True)
             await pg.click("#check")
         elif kind == "approach":
+            global engine_scenes
+            if EXPECT_ENGINE:
+                try:
+                    await pg.wait_for_selector("#px:not([hidden]) canvas", timeout=15000)
+                    engine_scenes += 1
+                except Exception:
+                    check(False, f"{ch}/{L['id']} card {cards}: Pixi scene did not mount")
             it = await pg.evaluate("item()")
             await pg.evaluate(f"(()=>{{const s=document.getElementById('spd');s.value={it['max']};s.dispatchEvent(new Event('input'))}})()")
             if it["horn"]: await pg.click("#horn")
@@ -99,6 +108,8 @@ async def main():
         pg = await b.new_page(viewport={"width": 400, "height": 900})
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
+        if "--no-engine" in sys.argv:
+            await pg.add_init_script("window.HD_NO_ENGINE=true")
         await pg.goto(URL); await pg.wait_for_timeout(300)
         await pg.evaluate("localStorage.clear()"); await pg.reload(); await pg.wait_for_timeout(300)
         total = 0
@@ -136,11 +147,15 @@ async def main():
         await pg2.goto(URL); await pg2.wait_for_timeout(300)
         await pg2.click("#chap-ch2"); await pg2.click("#tab-keepleft"); await pg2.click(".alt button[data-l='0']")
         check(await verdict(pg2) == "Correct", "private mode: answer failed")
+        if EXPECT_ENGINE:
+            check(engine_scenes == 6, f"engine scenes mounted: {engine_scenes}/6")
+            # scenes must be torn down when the question changes (WebGL contexts are limited)
+            check(await pg.evaluate("document.querySelectorAll('canvas').length") <= 1, "leaked canvases")
         sw = await pg.evaluate("document.documentElement.scrollWidth")
         check(sw <= 400, f"horizontal scroll: {sw}")
         check(not errs, f"page errors: {errs}")
         await b.close()
-        print(f"played {total} cards across {len(chapters)} chapters; {len(fails)} failures")
+        print(f"played {total} cards across {len(chapters)} chapters; engine scenes {engine_scenes}; {len(fails)} failures")
     sys.exit(1 if fails else 0)
 
 asyncio.run(main())
