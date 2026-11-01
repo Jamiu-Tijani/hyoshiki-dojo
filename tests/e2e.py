@@ -87,6 +87,10 @@ async def play_level(pg, ch, L):
             await pg.click(f".alt button[data-l='{it['ok'][0]}']")
         elif kind == "sort":
             k = await pg.evaluate("item()")
+            try:
+                await pg.wait_for_function("(()=>{const i=document.querySelector('#sc img');return i&&i.complete&&i.naturalWidth>0})()", timeout=5000)
+            except Exception:
+                check(False, f"{ch}/{L['id']}: sign image for {k} did not load")
             cat = await pg.evaluate(f"SIGNS['{k}'].cat")
             await pg.click(f"#bin-{cat}")
         v = await verdict(pg)
@@ -151,6 +155,9 @@ async def main():
             check(engine_scenes == 6, f"engine scenes mounted: {engine_scenes}/6")
             # scenes must be torn down when the question changes (WebGL contexts are limited)
             check(await pg.evaluate("document.querySelectorAll('canvas').length") <= 1, "leaked canvases")
+        # every official sign file loads
+        broken = await pg.evaluate("""Promise.all(Object.keys(SIGNS).map(k=>new Promise(r=>{const i=new Image();i.onload=()=>r(i.naturalWidth>0?null:k);i.onerror=()=>r(k);i.src=SIGNS[k].src;}))).then(a=>a.filter(Boolean))""")
+        check(not broken, f"sign images failed to load: {broken}")
         sw = await pg.evaluate("document.documentElement.scrollWidth")
         check(sw <= 400, f"horizontal scroll: {sw}")
         check(not errs, f"page errors: {errs}")

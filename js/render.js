@@ -8,66 +8,39 @@ const reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: r
 
 /* ---------- signs (100x100 viewBox, real-world colours, theme-independent) ---------- */
 const RED="#c8102e", BLUE="#1f4fa0", YEL="#f2c200", BLK="#1d1d1d", GRN="#1b7a45", WHT="#ffffff";
-const diamond = `<polygon points="50,3 97,50 50,97 3,50" fill="${YEL}" stroke="${BLK}" stroke-width="4" stroke-linejoin="round"/>`;
-const blueSq = `<rect x="5" y="5" width="90" height="90" rx="7" fill="${BLUE}" stroke="${WHT}" stroke-width="2"/>`;
-const ring = (fill)=>`<circle cx="50" cy="50" r="44" fill="${fill}" stroke="${RED}" stroke-width="10"/>`;
+/* Sign images are the official designs, taken from Wikimedia Commons (public domain) by CI
+   into assets/signs/. kb/signs.json records each file's Commons page and licence. Nothing here is drawn by us. */
 const SIGNS = {
-  shinnyu:  {jp:"進入禁止", en:"No entry (for vehicles, from this side)", cat:"kisei",
-    svg:`<circle cx="50" cy="50" r="46" fill="${RED}" stroke="${WHT}" stroke-width="3"/><rect x="17" y="42" width="66" height="16" fill="${WHT}"/>`},
-  tsukodome:{jp:"車両通行止め", en:"Closed to vehicles (both directions)", cat:"kisei", svg:ring(WHT)},
-  speed40:  {jp:"最高速度 40", en:"Maximum speed 40 km/h", cat:"kisei",
-    svg:ring(WHT)+`<text x="50" y="64" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="40" fill="${BLUE}">40</text>`},
-  tomare:   {jp:"一時停止（止まれ）", en:"Stop", cat:"kisei",
-    svg:`<polygon points="6,10 94,10 50,92" fill="${RED}" stroke="${WHT}" stroke-width="4" stroke-linejoin="round"/><text x="50" y="40" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="18" fill="${WHT}">止まれ</text>`},
-  chusha_kinshi:{jp:"駐車禁止", en:"No parking", cat:"kisei",
-    svg:ring(BLUE)+`<line x1="24" y1="24" x2="76" y2="76" stroke="${RED}" stroke-width="10"/>`},
-  ippo:     {jp:"一方通行", en:"One way", cat:"kisei",
-    svg:`<rect x="3" y="27" width="94" height="46" rx="4" fill="${BLUE}" stroke="${WHT}" stroke-width="2"/><polygon points="12,41 66,41 66,33 90,50 66,67 66,59 12,59" fill="${WHT}"/><text x="40" y="55" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="11" fill="${BLUE}">一方通行</text>`},
-  odan:     {jp:"横断歩道", en:"Pedestrian crossing", cat:"shiji",
-    svg:blueSq+`<polygon points="50,14 89,82 11,82" fill="${WHT}"/><circle cx="52" cy="38" r="5" fill="${BLK}"/><path d="M51 44 L48 60 M48 60 L42 71 M48 60 L56 71 M50 48 L41 54 M50 48 L59 53" stroke="${BLK}" stroke-width="4" stroke-linecap="round" fill="none"/><rect x="24" y="74" width="52" height="4" fill="${BLK}"/>`},
-  chusha_ka:{jp:"駐車可", en:"Parking allowed", cat:"shiji",
-    svg:blueSq+`<text x="50" y="74" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="64" fill="${WHT}">P</text>`},
-  teishisen:{jp:"停止線", en:"Stop line", cat:"shiji",
-    svg:blueSq+`<text x="50" y="44" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="20" fill="${WHT}">停止線</text><rect x="16" y="58" width="68" height="9" fill="${WHT}"/>`},
-  fumikiri: {jp:"踏切あり", en:"Railway crossing ahead", cat:"keikai",
-    svg:diamond+`<rect x="28" y="44" width="36" height="16" fill="${BLK}"/><rect x="56" y="34" width="14" height="26" fill="${BLK}"/><rect x="33" y="34" width="6" height="10" fill="${BLK}"/><circle cx="36" cy="63" r="5" fill="${BLK}"/><circle cx="50" cy="63" r="5" fill="${BLK}"/><circle cx="63" cy="63" r="5" fill="${BLK}"/>`},
-  koji:     {jp:"道路工事中", en:"Road works", cat:"keikai",
-    svg:diamond+`<circle cx="42" cy="32" r="6" fill="${BLK}"/><path d="M42 39 L44 56 L36 70 M44 56 L52 70 M43 44 L58 50" stroke="${BLK}" stroke-width="5" stroke-linecap="round" fill="none"/><line x1="58" y1="50" x2="64" y2="68" stroke="${BLK}" stroke-width="4"/><polygon points="58,72 74,72 66,62" fill="${BLK}"/>`},
-  hoko:     {jp:"方面と距離", en:"Destinations and distances", cat:"annai",
-    svg:`<rect x="3" y="14" width="94" height="72" rx="6" fill="${BLUE}" stroke="${WHT}" stroke-width="2"/><text x="12" y="42" font-family="sans-serif" font-weight="700" font-size="16" fill="${WHT}">↑ 新宿 3km</text><text x="12" y="70" font-family="sans-serif" font-weight="700" font-size="16" fill="${WHT}">→ 渋谷 5km</text>`},
-  kosoku:   {jp:"入口の予告", en:"Expressway entrance ahead", cat:"annai",
-    svg:`<rect x="3" y="14" width="94" height="72" rx="6" fill="${GRN}" stroke="${WHT}" stroke-width="2"/><text x="50" y="44" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="17" fill="${WHT}">首都高</text><text x="50" y="70" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="17" fill="${WHT}">入口 1km</text>`}
+  shinnyu:{jp:"進入禁止", en:"No entry (for vehicles, from this side)", cat:"kisei"},
+  tsukodome:{jp:"車両通行止め", en:"Closed to vehicles (both directions)", cat:"kisei"},
+  speed40:{jp:"最高速度 40", en:"Maximum speed 40 km/h", cat:"kisei"},
+  tomare:{jp:"一時停止（止まれ）", en:"Stop", cat:"kisei"},
+  chusha_kinshi:{jp:"駐車禁止", en:"No parking", cat:"kisei"},
+  ippo:{jp:"一方通行", en:"One way", cat:"kisei"},
+  odan:{jp:"横断歩道", en:"Pedestrian crossing", cat:"shiji"},
+  chusha_ka:{jp:"駐車可", en:"Parking allowed", cat:"shiji"},
+  teishisen:{jp:"停止線", en:"Stop line", cat:"shiji"},
+  fumikiri:{jp:"踏切あり", en:"Railway crossing ahead", cat:"keikai"},
+  koji:{jp:"道路工事中", en:"Road works", cat:"keikai"},
+  hoko:{jp:"方面と距離", en:"Destinations and distances", cat:"annai"},
+  kosoku:{jp:"入口の予告", en:"Expressway entrance ahead", cat:"annai"},
+  shitei_s:{jp:"指定方向外進行禁止（直進のみ）", en:"Straight ahead only", cat:"kisei"},
+  shitei_l:{jp:"指定方向外進行禁止（左折のみ）", en:"Left turn only", cat:"kisei"},
+  shitei_sl:{jp:"指定方向外進行禁止（直進・左折）", en:"Straight ahead or left only", cat:"kisei"},
+  tenkai:{jp:"転回禁止", en:"No U-turn", cat:"kisei"},
+  chuteisha_kinshi:{jp:"駐停車禁止", en:"No stopping or parking", cat:"kisei"},
+  hokosha:{jp:"歩行者専用", en:"Pedestrians only", cat:"kisei"},
+  jitensha_hokosha:{jp:"自転車及び歩行者専用", en:"Bicycles and pedestrians only", cat:"kisei"},
+  ogata:{jp:"大型貨物自動車等通行止め", en:"No large freight vehicles", cat:"kisei"},
+  jokou:{jp:"徐行", en:"Slow down (go slowly)", cat:"kisei"},
+  keiteki:{jp:"警笛鳴らせ", en:"Sound your horn", cat:"kisei"},
+  shingo:{jp:"信号機あり", en:"Traffic signal ahead", cat:"keikai"},
 };
-/* v2 signs. Arrow shapes are simplified; colours and layout follow the official designs. */
-const blueDisc=`<circle cx="50" cy="50" r="46" fill="${BLUE}" stroke="${WHT}" stroke-width="3"/>`;
-const upArrow=(x)=>`<polygon points="${x},14 ${x+18},38 ${x+7},38 ${x+7},84 ${x-7},84 ${x-7},38 ${x-18},38" fill="${WHT}"/>`;
-const leftHead=`<polygon points="14,40 32,24 32,56" fill="${WHT}"/>`;
-Object.assign(SIGNS,{
-  shitei_s:{jp:"指定方向外進行禁止（直進のみ）", en:"Straight ahead only", cat:"kisei", svg:blueDisc+upArrow(50)},
-  shitei_l:{jp:"指定方向外進行禁止（左折のみ）", en:"Left turn only", cat:"kisei",
-    svg:blueDisc+`<path d="M58 84 L58 52 Q58 40 46 40 L30 40" stroke="${WHT}" stroke-width="14" fill="none" stroke-linejoin="round"/>`+leftHead},
-  shitei_sl:{jp:"指定方向外進行禁止（直進・左折）", en:"Straight ahead or left only", cat:"kisei",
-    svg:blueDisc+upArrow(62)+`<path d="M58 64 Q58 52 46 52 L32 52" stroke="${WHT}" stroke-width="12" fill="none"/><polygon points="16,52 32,38 32,66" fill="${WHT}"/>`},
-  tenkai:{jp:"転回禁止", en:"No U-turn", cat:"kisei",
-    svg:`<circle cx="50" cy="50" r="44" fill="${BLUE}" stroke="${RED}" stroke-width="9"/><path d="M36 80 L36 44 Q36 26 52 26 Q68 26 68 44 L68 54" stroke="${WHT}" stroke-width="10" fill="none"/><polygon points="57,52 79,52 68,70" fill="${WHT}"/><line x1="22" y1="22" x2="78" y2="78" stroke="${RED}" stroke-width="9"/>`},
-  chuteisha_kinshi:{jp:"駐停車禁止", en:"No stopping or parking", cat:"kisei",
-    svg:ring(BLUE)+`<line x1="24" y1="24" x2="76" y2="76" stroke="${RED}" stroke-width="10"/><line x1="76" y1="24" x2="24" y2="76" stroke="${RED}" stroke-width="10"/>`},
-  hokosha:{jp:"歩行者専用", en:"Pedestrians only", cat:"kisei",
-    svg:blueDisc+`<circle cx="42" cy="26" r="7" fill="${WHT}"/><path d="M42 34 L40 56 L32 78 M40 56 L48 78 M41 40 L30 52 M41 40 L52 50" stroke="${WHT}" stroke-width="7" stroke-linecap="round" fill="none"/><circle cx="64" cy="48" r="5" fill="${WHT}"/><path d="M64 54 L63 68 L58 80 M63 68 L68 80 M52 50 L64 58" stroke="${WHT}" stroke-width="5" stroke-linecap="round" fill="none"/>`},
-  jitensha_hokosha:{jp:"自転車及び歩行者専用", en:"Bicycles and pedestrians only", cat:"kisei",
-    svg:blueDisc+`<circle cx="30" cy="66" r="11" stroke="${WHT}" stroke-width="4" fill="none"/><circle cx="58" cy="66" r="11" stroke="${WHT}" stroke-width="4" fill="none"/><path d="M30 66 L40 50 L56 50 L58 66 M40 50 L36 42 M48 66 L40 50" stroke="${WHT}" stroke-width="4" fill="none"/><circle cx="72" cy="28" r="6" fill="${WHT}"/><path d="M72 34 L71 52 L66 64 M71 52 L76 64 M71 40 L64 46 M71 40 L78 46" stroke="${WHT}" stroke-width="5" stroke-linecap="round" fill="none"/>`},
-  ogata:{jp:"大型貨物自動車等通行止め", en:"No large freight vehicles", cat:"kisei",
-    svg:ring(WHT)+`<rect x="22" y="36" width="38" height="26" fill="${BLK}"/><path d="M62 44 L72 44 L80 52 L80 62 L62 62 Z" fill="${BLK}"/><circle cx="32" cy="66" r="6" fill="${BLK}"/><circle cx="70" cy="66" r="6" fill="${BLK}"/>`},
-  jokou:{jp:"徐行", en:"Slow down (go slowly)", cat:"kisei",
-    svg:`<polygon points="6,10 94,10 50,92" fill="${RED}" stroke="${WHT}" stroke-width="4" stroke-linejoin="round"/><text x="50" y="38" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="20" fill="${WHT}">徐行</text><text x="50" y="55" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="11" fill="${WHT}">SLOW</text>`},
-  keiteki:{jp:"警笛鳴らせ", en:"Sound your horn", cat:"kisei",
-    svg:blueDisc+`<polygon points="22,42 38,42 72,22 72,78 38,58 22,58" fill="${WHT}"/>`},
-  shingo:{jp:"信号機あり", en:"Traffic signal ahead", cat:"keikai",
-    svg:diamond+`<rect x="40" y="22" width="20" height="56" rx="5" fill="${BLK}"/><circle cx="50" cy="33" r="6" fill="#e3262b"/><circle cx="50" cy="50" r="6" fill="#f3b700"/><circle cx="50" cy="67" r="6" fill="#11b5a4"/>`}
-});
-const signSVG = (k,size)=>`<svg viewBox="0 0 100 100" width="${size}" height="${size}" role="img" aria-label="${SIGNS[k].jp}">${SIGNS[k].svg}</svg>`;
+for (const k in SIGNS) SIGNS[k].src = `assets/signs/${k}.svg`;
+const signSVG = (k,size)=>`<img class="signimg" src="${SIGNS[k].src}" width="${size}" height="${size}" alt="${SIGNS[k].jp}" draggable="false">`;
+/* the same image inside an SVG scene */
+function signImage(parent,k,x,y,size){return el("image",{href:SIGNS[k].src,x,y,width:size,height:size,preserveAspectRatio:"xMidYMid meet"},parent);}
 const plateSVG = (text,w=90)=>`<svg viewBox="0 0 ${w} 34" width="${w}" height="34" role="img" aria-label="補助標識 ${text}"><rect x="1" y="1" width="${w-2}" height="32" rx="3" fill="${WHT}" stroke="${BLK}" stroke-width="2"/><text x="${w/2}" y="23" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="17" fill="${BLK}">${text}</text></svg>`;
-const leftOkPlate = `<svg viewBox="0 0 60 44" width="60" height="44" role="img" aria-label="白地に青の左向き矢印の標示板"><rect x="1" y="1" width="58" height="42" rx="4" fill="${WHT}" stroke="#888" stroke-width="2"/><polygon points="10,22 26,10 26,17 50,17 50,27 26,27 26,34" fill="${BLUE}"/></svg>`;
 
 /* ---------- signal head (Japanese horizontal: 青 | 黄 | 赤) ---------- */
 function signalSVG(state, arrows=[]){

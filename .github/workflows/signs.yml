@@ -1,6 +1,6 @@
 name: signs
 # Official sign artwork from Wikimedia Commons.
-#   push to `signs`                      -> discover (read-only, results in the log)
+#   push with "[discover-signs]"          -> discover (read-only, results in the log)
 #   push with "[fetch-signs]" in message -> download the files chosen in kb/signs.json and commit them
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 jobs:
   discover:
-    if: "!contains(github.event.head_commit.message, '[fetch-signs]')"
+    if: contains(github.event.head_commit.message, '[discover-signs]')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

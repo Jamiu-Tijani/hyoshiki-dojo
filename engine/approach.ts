@@ -1,11 +1,11 @@
 import { Application, Container, Graphics, Sprite, Text } from "pixi.js";
 import { gsap } from "gsap";
 import { engineHum, horn } from "./audio";
-import { svgTexture } from "./svg";
+import { urlTexture } from "./svg";
 
 export interface ApproachOptions {
-  /** inner SVG markup of the sign, 100×100 viewBox */
-  signSvg: string;
+  /** URL of the sign image (official design, assets/signs/*.svg) */
+  signUrl: string;
   stopLine?: boolean;
   crosswalk?: boolean;
   peds?: boolean;
@@ -120,7 +120,7 @@ export async function mountApproach(host: HTMLElement, o: ApproachOptions): Prom
     world.addChild(ped);
   }
 
-  const signTex = await svgTexture(o.signSvg, 96);
+  const signTex = await urlTexture(o.signUrl, 128);
   const sign = new Sprite(signTex);
   sign.width = sign.height = 42;
   sign.position.set(70, 186);

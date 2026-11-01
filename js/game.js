@@ -177,7 +177,7 @@ function renderPlate(){
   el("line",{x1:180,y1:230,x2:180,y2:360,stroke:LINE,"stroke-width":3,"stroke-dasharray":"16 10"},f);
   el("line",{x1:220,y1:190,x2:360,y2:190,stroke:LINE,"stroke-width":3,"stroke-dasharray":"16 10"},f);
   el("line",{x1:126,y1:150,x2:126,y2:112,stroke:"#9aa0a6","stroke-width":3},f);
-  const sg=el("g",{transform:"translate(104 68) scale(.44)"},f);sg.innerHTML=SIGNS[s.sign].svg;
+  signImage(f,s.sign,104,68,44);
   if(s.plate){const pg=el("g",{transform:"translate(106 116)"},f);pg.innerHTML=`<rect width="40" height="15" rx="2" fill="#fff" stroke="#1d1d1d"/><text x="20" y="11.5" text-anchor="middle" font-size="9" font-weight="700" font-family="sans-serif" fill="#1d1d1d">${s.plate}</text>`;}
   const zones={north:{x:150,y:6,w:60,h:104,label:"Enter"},east:{x:250,y:152,w:104,h:38,label:"Turn right"}};
   for(const z in zones){const Z=zones[z];
@@ -215,7 +215,7 @@ function renderSignal(){
   body.innerHTML=`<div class="hud"><div class="item"><span class="lbl">Signal</span>${signalSVG(s.sig,s.arrows||[])}</div>
      <div class="item"><span class="lbl">State</span><span class="hv">${signalWords[s.sig]}${s.arrows?" + green right arrow":""}</span></div>
      ${s.cross?`<div class="item"><span class="lbl">Cross street</span>${signalSVG(s.cross)}</div>`:""}
-     ${s.plate?`<div class="item"><span class="lbl">Board</span>${leftOkPlate}</div>`:""}
+     ${s.plate?`<div class="item"><span class="lbl">Board under the signal</span><span class="hv">白地に青の左向き矢印<br><span class="hint">White board, blue arrow pointing left</span></span></div>`:""}
      ${s.peds?`<div class="item"><span class="lbl">Crosswalk</span><span class="hint">Pedestrian in front of you, crossing on their green</span></div>`:""}</div>
      <svg class="field" id="f" viewBox="0 0 360 360" aria-label="intersection"></svg>
      <button class="linkbtn" id="showalt" type="button">Can't draw here? Show choices</button>
@@ -333,7 +333,7 @@ function renderBans(){
   if(s.sign){
     const pos={ahead:[86,8],approach:[82,196],cross:[250,192]}[s.at];
     el("line",{x1:pos[0]+17,y1:pos[1]+34,x2:pos[0]+17,y2:pos[1]+52,stroke:"#9aa0a6","stroke-width":3},f);
-    const sg=el("g",{transform:`translate(${pos[0]} ${pos[1]}) scale(.34)`},f);sg.innerHTML=SIGNS[s.sign].svg;
+    signImage(f,s.sign,pos[0],pos[1],34);
     if(s.at==="cross"){const t=el("text",{x:300,y:84,"text-anchor":"middle","font-size":10,fill:"#e8ece9","font-family":"sans-serif"},f);t.textContent="cross street";}
   }
   carG(f,G.start.x,G.start.y);
@@ -419,12 +419,12 @@ function renderApproach(){
   if(s.crosswalk){for(let i=0;i<8;i++)el("rect",{x:124+i*15,y:90,width:8,height:24,fill:LINE},f);
     el("path",{d:"M150 150 L160 160 L150 170 L140 160 Z",stroke:LINE,"stroke-width":2,fill:"none"},f);lineY=118;
     if(s.peds)pedestrian(f,108,102);}
-  const sg=el("g",{transform:"translate(70 186) scale(.42)"},f);sg.innerHTML=SIGNS[s.sign].svg;
+  signImage(f,s.sign,70,186,42);
   el("line",{x1:91,y1:228,x2:91,y2:250,stroke:"#9aa0a6","stroke-width":3},f);
   const x=150; const car=carG(f,x,318);
   const spd=$("#spd"), out=$("#spdv"), horn=$("#horn");
   const px=$("#px"), myItem=s;
-  loadEngine().then(E=>E&&E.mountApproach(px,{signSvg:SIGNS[s.sign].svg,stopLine:!!s.stopLine,crosswalk:!!s.crosswalk,peds:!!s.peds,curve:!!s.curve,reducedMotion:reduceMotion}))
+  loadEngine().then(E=>E&&E.mountApproach(px,{signUrl:new URL(SIGNS[s.sign].src,document.baseURI).href,stopLine:!!s.stopLine,crosswalk:!!s.crosswalk,peds:!!s.peds,curve:!!s.curve,reducedMotion:reduceMotion}))
     .then(sc=>{if(!sc)return;if(!px.isConnected||item()!==myItem||answered){sc.destroy();return;}scene=sc;px.hidden=false;f.setAttribute("hidden","");})
     .catch(e=>console.warn("Pixi scene failed, keeping SVG:",e));
   const lbl=v=>v==0?"0 km/h · stop":`${v} km/h`;

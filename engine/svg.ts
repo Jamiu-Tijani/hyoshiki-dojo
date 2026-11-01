@@ -1,14 +1,9 @@
 import { Texture } from "pixi.js";
 
-/** Rasterises a 100×100 sign drawing (inner SVG markup) into a texture at the given pixel size.
-    Going through an <img> keeps text inside signs (止まれ, 徐行) that Pixi's SVG parser would drop. */
-export async function svgTexture(markup: string, px: number): Promise<Texture> {
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${px}" height="${px}">` +
-    markup +
-    `</svg>`;
+/** Loads an image file (the official sign SVGs) into a texture. */
+export async function urlTexture(url: string, px: number): Promise<Texture> {
   const img = new Image(px, px);
-  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  img.src = url;
   await img.decode();
   return Texture.from(img);
 }

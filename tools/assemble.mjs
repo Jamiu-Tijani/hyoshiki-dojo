@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = path.join(ROOT, "dist");
-const COPY = ["index.html", ".nojekyll", "css", "js", "levels"];
+const COPY = ["index.html", ".nojekyll", "css", "js", "levels", "assets"];
 for (const p of COPY) {
   const from = path.join(ROOT, p);
   if (!fs.existsSync(from)) continue;
