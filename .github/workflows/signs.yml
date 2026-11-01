@@ -1,0 +1,40 @@
+name: signs
+# Official sign artwork from Wikimedia Commons.
+#   push to `signs`                      -> discover (read-only, results in the log)
+#   push with "[fetch-signs]" in message -> download the files chosen in kb/signs.json and commit them
+on:
+  push:
+    branches: [signs]
+permissions:
+  contents: read
+jobs:
+  discover:
+    if: "!contains(github.event.head_commit.message, '[fetch-signs]')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/commons-signs.mjs discover
+  fetch:
+    if: contains(github.event.head_commit.message, '[fetch-signs]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node tools/commons-signs.mjs fetch
+      - name: Commit fetched sign files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/signs kb/signs.json
+          git diff --cached --quiet && { echo "nothing new"; exit 0; }
+          git commit -m "Add official sign artwork from Wikimedia Commons (fetched in CI)"
+          git push
