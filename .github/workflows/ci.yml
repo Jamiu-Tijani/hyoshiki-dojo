@@ -1,7 +1,7 @@
 name: ci
 on:
   push:
-    branches: [main, rebuild, signs]
+    branches: [main, rebuild, signs, ch2-paths]
   pull_request:
   workflow_dispatch:
 permissions:

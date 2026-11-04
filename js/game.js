@@ -555,29 +555,128 @@ function renderBuild(){
   $("#undo").onclick=()=>{if($("#fb").innerHTML)return;const b=picked.pop();if(b){b.disabled=false;paint();}};
 }
 
+/* ---------- shared: freehand route input ---------- */
+/* Start on the car and drag; points carry timestamps so a held finger counts as a stop. */
+function pathInput(f,start,{radius=45,onDone}){
+  const pathEl=el("polyline",{points:"",fill:"none",stroke:"#8fb4ff","stroke-width":5,"stroke-linecap":"round","stroke-linejoin":"round","stroke-dasharray":"2 9"},f);
+  let pts=null;
+  const draw=line=>pathEl.setAttribute("points",line.map(q=>(+q.x).toFixed(1)+","+(+q.y).toFixed(1)).join(" "));
+  f.addEventListener("pointerdown",e=>{if(answered)return;const p=svgPt(f,e);
+    if(Math.hypot(p.x-start.x,p.y-start.y)>radius){$("#fb").innerHTML=`<div class="feedback bad"><span class="verdict">Start on the car</span><span>Put your finger on the car first, then drag your route.</span></div>`;return;}
+    $("#fb").innerHTML="";pts=[{x:start.x,y:start.y,t:e.timeStamp}];f.setPointerCapture(e.pointerId);});
+  f.addEventListener("pointermove",e=>{if(!pts)return;const p=svgPt(f,e),l=pts[pts.length-1];
+    if(Math.hypot(p.x-l.x,p.y-l.y)>3)pts.push({x:p.x,y:p.y,t:e.timeStamp});draw(pts);});
+  f.addEventListener("pointerup",e=>{if(!pts)return;const p=pts;pts=null;
+    p.push({x:p[p.length-1].x,y:p[p.length-1].y,t:e.timeStamp});
+    const far=Math.max(...p.map(q=>Math.hypot(q.x-p[0].x,q.y-p[0].y)));
+    if(p.length<4||far<20){draw([]);return;}
+    onDone(p);});
+  return {show:draw};
+}
+/* longest time (ms) the route stayed inside a zone */
+function dwellIn(pts,inZone){let best=0,run=0;for(let i=1;i<pts.length;i++){if(inZone(pts[i])&&inZone(pts[i-1])){run+=pts[i].t-pts[i-1].t;best=Math.max(best,run);}else run=0;}return best;}
+/* points every ~4 px so a quick stroke can't jump over an obstacle */
+function densify(pts){const d=[];for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],k=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/4));for(let j=0;j<k;j++)d.push({x:a.x+(b.x-a.x)*j/k,y:a.y+(b.y-a.y)*j/k});}d.push(pts[pts.length-1]);return d;}
+function animateWithStop(car,line,stopIdx,pause=700){
+  if(stopIdx==null||stopIdx<=0||stopIdx>=line.length-1){animate(car,line);return;}
+  const first=line.slice(0,stopIdx+1),rest=line.slice(stopIdx);
+  animate(car,first);
+  const len=l=>l.slice(1).reduce((s,p,i)=>s+Math.hypot(p.x-l[i].x,p.y-l[i].y),0);
+  setTimeout(()=>{if(car.isConnected)animate(car,rest);},reduceMotion?0:Math.min(1800,len(first)*6)+pause);
+}
+const lc=t=>t.charAt(0).toLowerCase()+t.slice(1);
+/* "your half" / "the right lane": lane names as they read inside a sentence */
+const lp=(s,i)=>{const n=laneName(s,i);return n==="Your half"?"your half":"the "+lc(n);};
+
 /* ======================= Chapter 2 ======================= */
-/* ---------- lanes: drag the car into a lane ---------- */
+/* ---------- lanes: draw your route ---------- */
 const RX0=30, RW=300;
 function laneGeom(n){const w=RW/n;return{w,cx:i=>RX0+w*i+w/2};}
 function laneName(s,i){
   const L=s.lanes[i], ups=s.lanes.filter(l=>l.dir==="up").length;
   if(L.dir==="down")return "Oncoming half";
-  if(L.paint)return L.paint.replace("バス","Bus lane ")+"";
+  if(L.paint)return "Bus lane ("+L.paint.replace("バス","")+")";
   if(s.lanes.some(l=>l.dir==="down"))return "Your half";
   if(ups===2)return i===0?"Left lane":"Right lane";
   return ["Left lane","Middle lane","Right lane"][i]||`Lane ${i+1}`;
 }
+function laneObstacles(s,g){
+  return (s.objs||[]).filter(o=>o.type!=="bus").map(o=>{
+    const cx=g.cx(o.lane), hw=o.type==="cones"?g.w/2-4:o.type==="truck"?17:15, hh=o.type==="cones"?34:o.type==="truck"?44:25;
+    const name=o.type==="cones"?"the road works":o.type==="truck"?"the truck":o.type==="oncoming"?"the oncoming car":"the car ahead";
+    return {...o,x0:cx-hw-8,x1:cx+hw+8,y0:o.y-hh-6,y1:o.y+hh+6,name};
+  });
+}
+function laneHome(s,g){const behind=(s.objs||[]).some(o=>o.type==="bus"&&o.y>250);return {x:g.cx(s.start),y:behind?225:290};}
+function analyseLanePath(s,g,home,pts){
+  const n=s.lanes.length, laneAt=x=>Math.max(0,Math.min(n-1,Math.floor((x-RX0)/g.w)));
+  const obs=laneObstacles(s,g), dense=densify(pts);
+  const visited=new Set(dense.map(p=>laneAt(p.x)));
+  const hit=obs.find(o=>dense.some(p=>p.x>o.x0&&p.x<o.x1&&p.y>o.y0&&p.y<o.y1));
+  const end=pts[pts.length-1], endLane=laneAt(end.x), top=end.y<70;
+  const ahead=obs.filter(o=>o.lane===s.start&&o.y<home.y).sort((a,b)=>b.y-a.y)[0];
+  let via=null;
+  if(ahead){const side=dense.filter(p=>p.y<ahead.y1&&p.y>ahead.y0).map(p=>laneAt(p.x));
+    if(side.length)via=side.every(l=>l===side[0])?side[0]:-1;}
+  const offRoad=dense.some(p=>p.x<RX0+2||p.x>RX0+RW-2);
+  return {visited,hit,endLane,top,ahead,via,offRoad};
+}
+function judgeLanePath(s,a){
+  const sp=s.path, st=s.start, nm=i=>lp(s,i), vis=[...a.visited];
+  const only=ls=>vis.every(l=>ls.includes(l)), crossedOncoming=vis.some(l=>s.lanes[l].dir==="down");
+  if(a.offRoad)return {ok:false,msg:"Your route left the road."};
+  if(a.hit)return {ok:false,msg:`You drove into ${a.hit.name}.`};
+  if(sp.stay){
+    if(!a.top)return {ok:false,msg:"You stopped, but nothing blocks you. Draw your route on up the road."};
+    if(!only([st]))return {ok:false,msg:crossedOncoming?"You crossed into the oncoming half.":`You left ${nm(st)}.`};
+    return {ok:true};
+  }
+  if(sp.follow){
+    if(!only([st]))return {ok:false,msg:crossedOncoming?"You crossed the centre line to get past.":"You changed lanes to get past."};
+    if(a.top)return {ok:false,msg:"You drove on through the vehicle ahead."};
+    return {ok:true};
+  }
+  if(sp.pass!=null){
+    if(!a.top)return {ok:false,msg:"You waited behind, but here you may pass."};
+    if(a.via!==sp.pass)return {ok:false,msg:a.via>sp.pass?"You passed two lanes over. Use the lane immediately to your right.":"Pass on the right-hand side."};
+    if(a.endLane!==st)return {ok:false,msg:`After passing, move back into ${nm(st)}.`};
+    if(!only([st,sp.pass]))return {ok:false,msg:`Use only ${nm(sp.pass)} to pass.`};
+    return {ok:true};
+  }
+  if(sp.move){
+    if(!a.top)return {ok:false,msg:"You stopped. Draw your route on up the road."};
+    // a lane you start in can't count as "entered"; you may need to leave it
+    const banned=vis.find(l=>l!==st&&((sp.never||[]).includes(l)||(s.lanes[l].paint&&!sp.move.includes(l))));
+    if(banned!=null)return {ok:false,msg:`Your route used ${nm(banned)}.`};
+    if(!sp.move.includes(a.endLane))return {ok:false,msg:`You ended in ${nm(a.endLane)}.`};
+    return {ok:true};
+  }
+  return {ok:false,msg:"This question has no answer set."};
+}
+/* tap-to-choose routes for when drawing isn't possible; each is judged exactly like a drawn route */
+function laneChoices(s,g,home){
+  const n=s.lanes.length, sx=g.cx(s.start), y0=home.y-25, P=(...xy)=>xy.map(([x,y])=>({x,y}));
+  const ahead=laneObstacles(s,g).filter(o=>o.lane===s.start&&o.y<home.y).sort((a,b)=>b.y-a.y)[0];
+  const out=[];
+  out.push(ahead?{label:"Wait behind",line:P([sx,y0],[sx,ahead.y1+18])}
+                :{label:`Stay in ${lp(s,s.start)}`,line:P([sx,y0],[sx,30])});
+  for(let L=0;L<n;L++)if(L!==s.start)out.push({label:`Move to ${lp(s,L)}`,line:P([sx,y0],[sx,y0-30],[g.cx(L),y0-80],[g.cx(L),30])});
+  if(ahead)for(const L of [s.start+1,s.start+2])if(L<n){const x=g.cx(L);
+    out.push({label:`Pass using ${lp(s,L)}, then move back`,line:P([sx,y0],[sx,ahead.y1+30],[x,ahead.y1-5],[x,ahead.y0-5],[sx,ahead.y0-50],[sx,30])});}
+  return out;
+}
 function renderLanes(){
-  const s=item(), n=s.lanes.length, g=laneGeom(n);
-  const body=shell(lv().task,"Or tap a lane, or use the buttons.");
+  const s=item(), n=s.lanes.length, g=laneGeom(n), home=laneHome(s,g);
+  const body=shell(lv().task);
   const signChip=s.sign?`<div class="item"><span class="lbl">Sign</span>${signSVG(s.sign,44)}</div>`:"";
+  const choices=laneChoices(s,g,home);
   body.innerHTML=hudHTML(s.hud,signChip)+
     `<svg class="field" id="f" viewBox="0 0 360 360" aria-label="road seen from above"></svg>
-     <div class="alt"><span>Choose:</span>${s.lanes.map((_,i)=>`<button data-l="${i}">${laneName(s,i).replace("Bus lane 専用","Bus lane (専用)").replace("Bus lane 優先","Bus lane (優先)")}</button>`).join("")}</div>`;
+     <button class="linkbtn" id="showalt" type="button">Can't draw here? Show choices</button>
+     <div class="alt" id="alt" hidden><span>Choose:</span>${choices.map((c,i)=>`<button data-c="${i}">${c.label}</button>`).join("")}</div>`;
   const f=$("#f");
   el("rect",{x:0,y:0,width:360,height:360,fill:"var(--field)"},f);
   el("rect",{x:RX0,y:0,width:RW,height:360,fill:ROAD},f);
-  // edge lines (車道外側線)
   el("line",{x1:RX0+4,y1:0,x2:RX0+4,y2:360,stroke:LINE,"stroke-width":2},f);
   el("line",{x1:RX0+RW-4,y1:0,x2:RX0+RW-4,y2:360,stroke:LINE,"stroke-width":2},f);
   s.lanes.forEach((L,i)=>{
@@ -586,15 +685,14 @@ function renderLanes(){
       el("rect",{x:x0+6,y:0,width:g.w-12,height:360,fill:"rgba(200,60,40,.16)"},f);
       for(const y of [70,250]){const t=el("text",{x:x0+g.w/2,y,"text-anchor":"middle","font-size":16,"font-weight":700,fill:"#f2f2ee","font-family":"sans-serif","letter-spacing":"1"},f);t.textContent=L.paint;}
     }
-    // direction chevrons
     const cy=L.paint?160:180, up=L.dir==="up";
     el("path",{d:up?`M${x0+g.w/2-9} ${cy+6} L${x0+g.w/2} ${cy-6} L${x0+g.w/2+9} ${cy+6}`:`M${x0+g.w/2-9} ${cy-6} L${x0+g.w/2} ${cy+6} L${x0+g.w/2+9} ${cy-6}`,stroke:"rgba(242,242,238,.45)","stroke-width":3,fill:"none"},f);
-    const tb=el("rect",{x:x0+g.w/2-46,y:4,width:92,height:17,rx:8,fill:"rgba(20,24,27,.72)"},f);
+    el("rect",{x:x0+g.w/2-46,y:4,width:92,height:17,rx:8,fill:"rgba(20,24,27,.72)"},f);
     const t=el("text",{x:x0+g.w/2,y:16,"text-anchor":"middle","font-size":11,fill:"#e8ece9","font-family":"sans-serif"},f);t.textContent=laneName(s,i);
   });
   s.lines.forEach((m,i)=>{
     const x=RX0+g.w*(i+1);
-    if(m==="yellow"){el("line",{x1:x,y1:0,x2:x,y2:340,stroke:"#f2c200","stroke-width":5},f);}
+    if(m==="yellow")el("line",{x1:x,y1:0,x2:x,y2:340,stroke:"#f2c200","stroke-width":5},f);
     else el("line",{x1:x,y1:0,x2:x,y2:340,stroke:LINE,"stroke-width":3,"stroke-dasharray":"18 12"},f);
   });
   (s.objs||[]).forEach(o=>{
@@ -603,42 +701,56 @@ function renderLanes(){
     else if(o.type==="oncoming")vehicleG(f,x,o.y,{rot:180,color:"#c7d0d8"});
     else vehicleG(f,x,o.y,{kind:o.type,color:o.color||"#e8c86a"});
   });
-  const behind=(s.objs||[]).some(o=>o.type==="bus"&&o.y>250);
-  const home={x:g.cx(s.start),y:behind?225:290};
-  const car=carG(f,home.x,home.y);let pos={...home},drag=false;
-  const laneAt=x=>{const i=Math.floor((x-RX0)/g.w);return i>=0&&i<n?i:null;};
-  const place=i=>{
+  const car=carG(f,home.x,home.y);
+  const judge=line=>{
     if(answered)return;
-    const ty=(s.objs||[]).some(o=>o.lane===i&&o.y>200&&o.y<300&&o.type!=="bus")?300:(i===s.start?290:240);
-    pos={x:g.cx(i),y:behind?200:ty};
-    car.setAttribute("transform",`translate(${pos.x} ${pos.y})`);
-    const ok=s.ok.includes(i);
-    let why=s.why;
-    if(!ok&&s.lanes[i].dir==="down")why="That is the oncoming half of the road. "+why;
-    feedback(ok,why,s.rule);
+    const r=judgeLanePath(s,analyseLanePath(s,g,home,line));
+    feedback(r.ok,(r.ok?"":r.msg+" ")+s.why,s.rule);
+    if(r.ok)animate(car,[{x:home.x,y:home.y-25}].concat(line.slice(1)));
   };
-  f.addEventListener("pointerdown",e=>{if(answered)return;const p=svgPt(f,e);
-    if(Math.hypot(p.x-pos.x,p.y-pos.y)<40){drag=true;f.setPointerCapture(e.pointerId);}
-    else{const i=laneAt(p.x);if(i!=null)place(i);}});
-  f.addEventListener("pointermove",e=>{if(!drag)return;const p=svgPt(f,e);pos={x:Math.max(RX0+14,Math.min(RX0+RW-14,p.x)),y:Math.max(40,Math.min(320,p.y))};car.setAttribute("transform",`translate(${pos.x} ${pos.y})`);});
-  f.addEventListener("pointerup",e=>{if(!drag)return;drag=false;
-    if(Math.hypot(pos.x-home.x,pos.y-home.y)<12){car.setAttribute("transform",`translate(${home.x} ${home.y})`);pos={...home};return;}
-    const i=laneAt(pos.x);if(i!=null)place(i);});
-  body.querySelectorAll(".alt button").forEach(b=>b.onclick=()=>place(+b.dataset.l));
+  const input=pathInput(f,{x:home.x,y:home.y-25},{onDone:judge});
+  window.__hdCorrect=()=>choices.findIndex(c=>judgeLanePath(s,analyseLanePath(s,g,home,c.line)).ok);
+  $("#showalt").onclick=()=>{$("#alt").hidden=false;$("#showalt").hidden=true;};
+  body.querySelectorAll("#alt button").forEach(b=>b.onclick=()=>{const c=choices[+b.dataset.c];input.show(c.line);judge(c.line);});
 }
 
-/* ---------- kerb: stop before crossing the pavement ---------- */
-/* Layout (viewBox 360): car park y 0–120, pavement y 120–170, road y 170–360. Driveway x 140–220. */
-const K={park:120,walk0:120,walk1:170};
+/* ---------- kerb: draw the route across the pavement, holding to stop ---------- */
+/* Layout (viewBox 360): car park y 0–120, pavement y 120–170, road y 170–360. Driveway x 130–230. */
+const K={park:120,walk0:120,walk1:170,dx0:130,dx1:230,hold:400};
+function kerbGeom(into){
+  return into
+    ?{home:{x:180,y:300},front:{x:180,y:275},zone:p=>p.y>=K.walk1&&p.y<=K.walk1+30,done:p=>p.y<100}
+    :{home:{x:180,y:60},front:{x:180,y:85},zone:p=>p.y>=K.walk0-30&&p.y<=K.walk0,done:p=>p.y>215};
+}
+function judgeKerbPath(s,pts){
+  const into=s.dir==="in", G=kerbGeom(into), onWalk=p=>p.y>K.walk0&&p.y<K.walk1;
+  const end=pts[pts.length-1];
+  if(!G.done(end))return {ok:false,msg:into?"Finish your route into the car park.":"Finish your route out onto the road."};
+  if(densify(pts).some(p=>onWalk(p)&&(p.x<K.dx0||p.x>K.dx1)))return {ok:false,msg:"Cross the pavement at the driveway."};
+  if(dwellIn(pts,G.zone)>=K.hold)return {ok:true,stopAt:pts.findIndex(G.zone)};
+  if(dwellIn(pts,onWalk)>=K.hold)return {ok:false,msg:"You stopped on the pavement, blocking it. Stop just before it."};
+  return {ok:false,msg:"You crossed the pavement without stopping. Hold your finger still just before the pavement, then carry on."};
+}
+function kerbChoices(s){
+  const into=s.dir==="in", G=kerbGeom(into), f=G.front, sgn=into?-1:1;
+  const stopY=into?K.walk1+12:K.walk0-12, walkY=(K.walk0+K.walk1)/2, endY=into?60:240;
+  const seq=(...ys)=>{let t=0;return ys.map(([y,dt])=>({x:f.x,y,t:(t+=dt)}));};
+  return [
+    {label:into?"Drive straight in":"Drive straight out",pts:seq([f.y,0],[stopY,300],[walkY,100],[endY,300])},
+    {label:"Stop just before the pavement, then go",pts:seq([f.y,0],[stopY,300],[stopY+0.01*sgn,700],[walkY,300],[endY,300])},
+    {label:"Stop on the pavement, then go",pts:seq([f.y,0],[stopY,300],[walkY,200],[walkY+0.01*sgn,700],[endY,300])}
+  ].map(c=>({label:c.label,line:c.pts.map(p=>({...p}))}));
+}
 function renderKerb(){
-  const s=item(), into=s.dir==="in";
+  const s=item(), into=s.dir==="in", G=kerbGeom(into);
   const body=shell(into
-    ?`You are turning into a <span class="goal">car park</span> across the pavement. Drag the car and stop it where you must stop.`
-    :`You are leaving a <span class="goal">car park</span> across the pavement. Drag the car and stop it where you must stop.`,
-    "Or tap the driveway where the front of the car should stop.");
+    ?`Draw your route into the <span class="goal">car park</span> across the pavement. To stop, hold your finger still for a moment, then carry on.`
+    :`Draw your route out of the <span class="goal">car park</span> across the pavement. To stop, hold your finger still for a moment, then carry on.`);
+  const choices=kerbChoices(s);
   body.innerHTML=hudHTML([["Pavement",s.peds?"A pedestrian is walking along it":"Empty"],["Road","Separate pavement and roadway"]])+
     `<svg class="field" id="f" viewBox="0 0 360 360" aria-label="driveway across a pavement"></svg>
-     <div class="row"><button class="btn primary" id="confirm">Stop here</button></div>`;
+     <button class="linkbtn" id="showalt" type="button">Can't draw here? Show choices</button>
+     <div class="alt" id="alt" hidden><span>Choose:</span>${choices.map((c,i)=>`<button data-c="${i}">${c.label}</button>`).join("")}</div>`;
   const f=$("#f");
   el("rect",{x:0,y:0,width:360,height:360,fill:"var(--field)"},f);
   el("rect",{x:20,y:10,width:320,height:K.park-10,rx:6,fill:"#5a6168"},f);
@@ -646,36 +758,23 @@ function renderKerb(){
   const pt=el("text",{x:330,y:100,"text-anchor":"end","font-size":12,"font-weight":700,fill:"#f2f2ee","font-family":"sans-serif"},f);pt.textContent="P 駐車場";
   el("rect",{x:0,y:K.walk0,width:360,height:K.walk1-K.walk0,fill:"#a9a39a"},f);
   for(let x=0;x<360;x+=24)el("line",{x1:x,y1:K.walk0,x2:x,y2:K.walk1,stroke:"#968f86","stroke-width":1},f);
-  el("rect",{x:140,y:K.walk0,width:80,height:K.walk1-K.walk0,fill:"#b8b2a8"},f);
+  el("rect",{x:K.dx0,y:K.walk0,width:K.dx1-K.dx0,height:K.walk1-K.walk0,fill:"#b8b2a8"},f);
   const wt=el("text",{x:20,y:K.walk0+30,"font-size":11,"font-weight":700,fill:"#3a3530","font-family":"sans-serif"},f);wt.textContent="歩道";
   el("rect",{x:0,y:K.walk1,width:360,height:360-K.walk1,fill:ROAD},f);
   el("rect",{x:0,y:K.walk1,width:360,height:4,fill:"#d6d0c6"},f);
   el("line",{x1:0,y1:270,x2:360,y2:270,stroke:LINE,"stroke-width":3,"stroke-dasharray":"16 10"},f);
   if(s.peds)pedestrian(f,250,K.walk0+28);
-  const x=180, rot=into?0:180;
-  let cy=into?300:60; const car=carG(f,x,cy);car.setAttribute("transform",`translate(${x} ${cy}) rotate(${rot})`);
-  const front=()=>into?cy-25:cy+25;
-  const set=y=>{cy=Math.max(40,Math.min(320,y));car.setAttribute("transform",`translate(${x} ${cy}) rotate(${rot})`);};
-  let drag=false,off=0;
-  f.addEventListener("pointerdown",e=>{if(answered)return;const p=svgPt(f,e);
-    if(Math.abs(p.x-x)<40&&Math.abs(p.y-cy)<40){drag=true;off=p.y-cy;f.setPointerCapture(e.pointerId);}
-    else if(p.x>=130&&p.x<=230)set(into?p.y+25:p.y-25);});
-  f.addEventListener("pointermove",e=>{if(drag)set(svgPt(f,e).y-off);});
-  f.addEventListener("pointerup",()=>{drag=false;});
-  $("#confirm").onclick=()=>{
+  const car=carG(f,G.home.x,G.home.y);car.setAttribute("transform",`translate(${G.home.x} ${G.home.y}) rotate(${into?0:180})`);
+  const judge=line=>{
     if(answered)return;
-    const fr=front(); let ok,why=s.why;
-    if(into){ // stopping edge is the road-side kerb (walk1); front must be just below it
-      ok=fr>=K.walk1&&fr<=K.walk1+26;
-      if(fr<K.walk1)why=(fr<K.walk0?"You drove across the pavement without stopping. ":"The front of the car is on the pavement. ")+why;
-      else if(!ok)why="You stopped well back from the pavement. Pull up to just before it. "+why;
-    }else{
-      ok=fr<=K.walk0&&fr>=K.walk0-26;
-      if(fr>K.walk0)why=(fr>K.walk1?"You drove across the pavement without stopping. ":"The front of the car is on the pavement. ")+why;
-      else if(!ok)why="You stopped well back from the pavement. Pull up to just before it. "+why;
-    }
-    feedback(ok,why,s.rule);
+    const r=judgeKerbPath(s,line);
+    feedback(r.ok,(r.ok?"":r.msg+" ")+s.why,s.rule);
+    if(r.ok)animateWithStop(car,line.map(p=>({x:p.x,y:p.y})),r.stopAt);
   };
+  const input=pathInput(f,G.front,{onDone:judge});
+  window.__hdCorrect=()=>choices.findIndex(c=>judgeKerbPath(s,c.line).ok);
+  $("#showalt").onclick=()=>{$("#alt").hidden=false;$("#showalt").hidden=true;};
+  body.querySelectorAll("#alt button").forEach(b=>b.onclick=()=>{const c=choices[+b.dataset.c];input.show(c.line);judge(c.line);});
 }
 
 function renderScenario(){

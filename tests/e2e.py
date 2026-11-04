@@ -37,7 +37,13 @@ async def play_level(pg, ch, L):
             it = await pg.evaluate("item()")
             z = await pg.locator(f"#z-{it['ok']}").bounding_box()
             await pg.mouse.click(z["x"] + z["width"] / 2, z["y"] + z["height"] / 2)
-        elif kind == "stoppos" or kind == "kerb":
+        elif kind in ("lanes", "kerb"):
+            idx = await pg.evaluate("window.__hdCorrect()")
+            check(idx >= 0, f"{ch}/{L['id']} card {cards}: no route choice is judged correct")
+            choices = await pg.locator("#alt button").count()
+            check(choices >= 2, f"{ch}/{L['id']} card {cards}: only {choices} route choice(s)")
+            await pg.click("#showalt"); await pg.click(f"#alt button[data-c='{idx}']")
+        elif kind == "stoppos":
             await pg.evaluate("""(()=>{const s=item();const f=document.getElementById('f');})()""")
             # tap the right spot in SVG units
             it = await pg.evaluate("item()")
@@ -82,9 +88,6 @@ async def play_level(pg, ch, L):
             seq = list(it["tiles"]) if wrong_done else [it["decoys"][0]] + list(it["tiles"][1:])
             wrong_done = True
             for t in seq: await pg.locator(f".tile[data-t=\"{t}\"]:not([disabled])").first.click()
-        elif kind == "lanes":
-            it = await pg.evaluate("item()")
-            await pg.click(f".alt button[data-l='{it['ok'][0]}']")
         elif kind == "sort":
             k = await pg.evaluate("item()")
             try:
@@ -122,9 +125,44 @@ async def main():
             await pg.click(f"#chap-{C['id']}")
             for L in C["levels"]:
                 total += await play_level(pg, C["id"], L)
+        # ---- real drawn routes (mouse), Chapter 2 ----
+        async def draw(points, holds=None):
+            """points in SVG units; holds = {index: ms} pauses at that point"""
+            box = await pg.locator("#f").bounding_box(); sc = box["width"] / 360
+            X = lambda p: (box["x"] + p[0] * sc, box["y"] + p[1] * sc)
+            await pg.mouse.move(*X(points[0])); await pg.mouse.down()
+            for i, p in enumerate(points[1:], 1):
+                await pg.mouse.move(*X(p), steps=8)
+                if holds and i in holds: await pg.wait_for_timeout(holds[i])
+            await pg.mouse.up()
+            return await verdict(pg)
+        async def goto_item(chap, level, i):
+            await pg.click(f"#chap-{chap}"); await pg.click(f"#tab-{level}")
+            await pg.evaluate(f"(()=>{{order=lv().items.map((_,k)=>k);idx={i};renderScenario();}})()")
+        # 2.1 #2 road works: go round on the right and come back
+        await goto_item("ch2", "keepleft", 1)
+        v = await draw([(105, 265), (105, 225), (250, 190), (250, 100), (105, 55), (105, 25)])
+        check(v == "Correct", f"drawn pass-and-return: {v}")
+        # same item, straight through the cones
+        await goto_item("ch2", "keepleft", 1)
+        v = await draw([(105, 265), (105, 150), (105, 25)])
+        msg = await pg.locator(".feedback span").nth(1).inner_text()
+        check(v != "Correct" and "road works" in msg, f"drawn crash: {v} / {msg[:60]}")
+        # 2.2 #4 three lanes: passing two lanes over is wrong
+        await goto_item("ch2", "lanechoice", 3)
+        v = await draw([(80, 265), (80, 220), (280, 190), (280, 90), (80, 45), (80, 25)])
+        check(v != "Correct", f"drawn pass two lanes over should be wrong: {v}")
+        # 2.4 into the car park, holding before the pavement
+        await goto_item("ch2", "sidewalk", 0)
+        v = await draw([(180, 275), (180, 182), (180, 140), (180, 60)], holds={1: 700})
+        check(v == "Correct", f"drawn kerb with hold: {v}")
+        await goto_item("ch2", "sidewalk", 0)
+        v = await draw([(180, 275), (180, 182), (180, 140), (180, 60)])
+        check(v != "Correct", f"drawn kerb without stopping should be wrong: {v}")
+        drawn = 5  # answers given by the drawn-route checks above
         # ---- tracking ----
         t = await pg.evaluate("Track.totals()")
-        check(t["answers"] == total, f"tracked answers {t['answers']} != played {total}")
+        check(t["answers"] == total + drawn, f"tracked answers {t['answers']} != played {total + drawn}")
         check(t["sessions"] == 1, f"expected 1 session, got {t['sessions']}")
         n_items = sum(len(L["items"]) for C in chapters for L in C["levels"])
         check(t["itemsSeen"] == n_items, f"items tracked {t['itemsSeen']} != {n_items}")
@@ -133,9 +171,9 @@ async def main():
         # 30-minute gap starts a new session
         await pg.evaluate("(()=>{const m=JSON.parse(localStorage.getItem('hd.v2.meta'));m.last-=31*60*1000;localStorage.setItem('hd.v2.meta',JSON.stringify(m));})()")
         await pg.reload(); await pg.wait_for_timeout(300)
-        await pg.click("#chap-ch2"); await pg.click("#tab-keepleft"); await pg.click(".alt button[data-l='0']")
+        await pg.click("#chap-ch2"); await pg.click("#tab-keepleft"); await pg.click("#showalt"); await pg.click(f"#alt button[data-c='{await pg.evaluate('window.__hdCorrect()')}']")
         t2 = await pg.evaluate("Track.totals()")
-        check(t2["sessions"] == 2 and t2["answers"] == total + 1, f"session split: {t2}")
+        check(t2["sessions"] == 2 and t2["answers"] == total + drawn + 1, f"session split: {t2}")
         # History panel
         await pg.click("#history-btn")
         rows = await pg.locator(".hist tbody tr").count()
@@ -149,7 +187,7 @@ async def main():
         pg2.on("pageerror", lambda e: errs.append("private: " + str(e)))
         await pg2.add_init_script("Object.defineProperty(window,'localStorage',{get(){throw new Error('denied')}})")
         await pg2.goto(URL); await pg2.wait_for_timeout(300)
-        await pg2.click("#chap-ch2"); await pg2.click("#tab-keepleft"); await pg2.click(".alt button[data-l='0']")
+        await pg2.click("#chap-ch2"); await pg2.click("#tab-keepleft"); await pg2.click("#showalt"); await pg2.click(f"#alt button[data-c='{await pg2.evaluate('window.__hdCorrect()')}']")
         check(await verdict(pg2) == "Correct", "private mode: answer failed")
         if EXPECT_ENGINE:
             check(engine_scenes == 6, f"engine scenes mounted: {engine_scenes}/6")
