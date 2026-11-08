@@ -1,7 +1,7 @@
 name: ci
 on:
   push:
-    branches: [main, rebuild, signs, ch2-paths]
+    branches: [main, rebuild, signs, ch2-paths, react-migration]
   pull_request:
   workflow_dispatch:
 permissions:
@@ -21,6 +21,8 @@ jobs:
         run: npm run kb:check
       - name: Typecheck
         run: npm run typecheck
+      - name: Logic tests (src/logic against the old game's recorded decisions)
+        run: npm run test:logic
       - name: Build
         run: npm run build
       - name: Bundle report

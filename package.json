@@ -7,7 +7,9 @@
     "kb:check": "node tools/build-kb.mjs --check",
     "typecheck": "tsc --noEmit",
     "build:engine": "vite build",
-    "build": "node tools/build-kb.mjs --check && vite build && node tools/assemble.mjs"
+    "build": "node tools/build-kb.mjs --check && vite build && node tools/assemble.mjs",
+    "test:logic": "node --test \"tests/logic/*.test.mjs\"",
+    "golden": "python3 tools/golden-old.py"
   },
   "dependencies": {
     "gsap": "^3.15.0",
