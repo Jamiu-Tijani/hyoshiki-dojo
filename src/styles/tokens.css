@@ -1,0 +1,152 @@
+/* Hyōshiki Dojo design tokens — approved 2026-11-08 (see docs/redesign.md).
+   Warm minimalism, technical precision. Every text/semantic pair below was checked
+   for WCAG AA (lowest: text-3 on dark surface, 4.98:1). Borders are decorative only:
+   interactive boundaries and focus use --primary. */
+
+:root {
+  /* ---------- colour: light ---------- */
+  --bg: #F6F5F1;
+  --surface: #FFFFFF;
+  --surface-2: #FFFFFF;          /* elevated (sheets, menus) */
+  --sunken: #EEECE6;
+  --text: #1B1B19;
+  --text-2: #55534D;
+  --text-3: #6E6B64;
+  --border: #E2DFD7;
+  --primary: #1F4E9C;            /* Japanese sign blue */
+  --on-primary: #FFFFFF;
+  --primary-tint: #E6EDF8;
+  --success: #1C7448;
+  --success-tint: #E5F2EA;
+  --warning: #8A5A00;
+  --warning-tint: #FBF0D9;
+  --error: #B3261E;              /* sign red */
+  --error-tint: #FBE7E5;
+  --scrim: rgba(20, 18, 14, 0.42);
+  /* road scenes (themed, not hard-coded) */
+  --scene-ground: #CDD6CC;
+  --scene-road: #3C4248;
+  --scene-line: #F2F2EE;
+
+  /* ---------- type ---------- */
+  --font-display: "Plus Jakarta Sans", "Noto Sans JP Subset", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  --font-body: "Satoshi", "Noto Sans JP Subset", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  --font-jp: "Noto Sans JP Subset", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-15: 0.9375rem;
+  --fs-17: 1.0625rem;
+  --fs-20: 1.25rem;
+  --fs-24: 1.5rem;
+  --fs-30: 1.875rem;
+  --lh-body: 1.5;
+  --lh-heading: 1.25;
+  --tracking-label: 0.04em;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+
+  /* ---------- space (4-pt grid) ---------- */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --tap: 44px;                   /* minimum touch target */
+
+  /* ---------- shape ---------- */
+  --r-inner: 8px;
+  --r-control: 12px;             /* buttons, inputs */
+  --r-card: 16px;
+  --r-sheet: 24px;               /* bottom-sheet top corners */
+  --r-pill: 999px;
+
+  /* ---------- depth (light uses shadow; dark uses surface steps) ---------- */
+  --shadow-card: 0 1px 2px rgba(20, 18, 14, 0.06), 0 1px 1px rgba(20, 18, 14, 0.04);
+  --shadow-sheet: 0 -8px 28px rgba(20, 18, 14, 0.14);
+
+  /* ---------- motion ---------- */
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-move: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --dur-press: 120ms;
+  --dur-state: 180ms;
+  --dur-card: 240ms;
+  --dur-page: 300ms;
+  --dur-sheet: 340ms;
+  --press-scale: 0.97;
+
+  color-scheme: light;
+}
+
+/* ---------- colour: dark (OS setting, unless the user chose light) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141517;
+    --surface: #1C1E21;
+    --surface-2: #24272B;
+    --sunken: #101113;
+    --text: #EDECE8;
+    --text-2: #B4B1AA;
+    --text-3: #8F8C86;
+    --border: #2E3135;
+    --primary: #8FB0EE;
+    --on-primary: #0F1A2E;
+    --primary-tint: #1B2538;
+    --success: #6BC995;
+    --success-tint: #18291F;
+    --warning: #E6B450;
+    --warning-tint: #2E2513;
+    --error: #F2867C;
+    --error-tint: #33191A;
+    --scrim: rgba(0, 0, 0, 0.55);
+    --scene-ground: #25312A;
+    --scene-road: #3A4046;
+    --scene-line: #E6E6E1;
+    --shadow-card: none;
+    --shadow-sheet: 0 -8px 28px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+/* ---------- colour: dark (explicit choice) ---------- */
+:root[data-theme="dark"] {
+  --bg: #141517;
+  --surface: #1C1E21;
+  --surface-2: #24272B;
+  --sunken: #101113;
+  --text: #EDECE8;
+  --text-2: #B4B1AA;
+  --text-3: #8F8C86;
+  --border: #2E3135;
+  --primary: #8FB0EE;
+  --on-primary: #0F1A2E;
+  --primary-tint: #1B2538;
+  --success: #6BC995;
+  --success-tint: #18291F;
+  --warning: #E6B450;
+  --warning-tint: #2E2513;
+  --error: #F2867C;
+  --error-tint: #33191A;
+  --scrim: rgba(0, 0, 0, 0.55);
+  --scene-ground: #25312A;
+  --scene-road: #3A4046;
+  --scene-line: #E6E6E1;
+  --shadow-card: none;
+  --shadow-sheet: 0 -8px 28px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-press: 0ms;
+    --dur-state: 0ms;
+    --dur-card: 0ms;
+    --dur-page: 0ms;
+    --dur-sheet: 0ms;
+    --press-scale: 1;
+  }
+}
