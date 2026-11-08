@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { AnimatePresence, MotionConfig, motion } from "motion/react";
+import { AnimatePresence, LazyMotion, MotionConfig, domAnimation, m } from "motion/react";
 import { useRoute } from "./useRoute.ts";
 import { tabFor, type Route } from "./route.ts";
 import { duration, easing } from "./motion.ts";
@@ -40,24 +40,26 @@ export function App() {
   }, [hash]); // route is derived from hash
 
   return (
-    <MotionConfig reducedMotion="user">
-      <div className="app" data-focused={tab === null ? "" : undefined}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.main
-            key={hash}
-            className="app-main"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1, transition: { duration: duration("--dur-page"), ease: easing("--ease-enter") } }}
-            exit={{ opacity: 0, transition: { duration: duration("--dur-press"), ease: easing("--ease-exit") } }}
-            onAnimationComplete={() => {
-              if (!first.current) document.querySelector<HTMLElement>("[data-page-title]")?.focus({ preventScroll: true });
-            }}
-          >
-            {screenFor(route)}
-          </motion.main>
-        </AnimatePresence>
-        {tab && <BottomTabBar active={tab} />}
-      </div>
-    </MotionConfig>
+    <LazyMotion features={domAnimation} strict>
+      <MotionConfig reducedMotion="user">
+        <div className="app" data-focused={tab === null ? "" : undefined}>
+          <AnimatePresence mode="wait" initial={false}>
+            <m.main
+              key={hash}
+              className="app-main"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { duration: duration("--dur-page"), ease: easing("--ease-enter") } }}
+              exit={{ opacity: 0, transition: { duration: duration("--dur-press"), ease: easing("--ease-exit") } }}
+              onAnimationComplete={() => {
+                if (!first.current) document.querySelector<HTMLElement>("[data-page-title]")?.focus({ preventScroll: true });
+              }}
+            >
+              {screenFor(route)}
+            </m.main>
+          </AnimatePresence>
+          {tab && <BottomTabBar active={tab} />}
+        </div>
+      </MotionConfig>
+    </LazyMotion>
   );
 }

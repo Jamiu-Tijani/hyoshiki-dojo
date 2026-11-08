@@ -9,6 +9,6 @@
   border-radius: var(--r-card);
   box-shadow: var(--shadow-card);
 }
-.empty-state-icon { width: var(--s-10); height: var(--s-10); color: var(--text-3); }
+.empty-state-icon { width: var(--s-10); height: var(--s-10); color: var(--text-3); stroke-width: var(--icon-stroke); }
 .empty-state h2 { font-size: var(--fs-20); }
-.empty-state-body { display: flex; flex-direction: column; gap: var(--s-3); color: var(--text-2); max-width: 36ch; }
+.empty-state-body { display: flex; flex-direction: column; gap: var(--s-3); color: var(--text-2); max-width: var(--measure); }

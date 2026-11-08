@@ -58,6 +58,14 @@
   --s-12: 48px;
   --tap: 44px;                   /* minimum touch target */
 
+  /* ---------- layout & lines (added 2026-11-08, Phase 1) ---------- */
+  --content-max: 560px;          /* single-column app width */
+  --measure: 36ch;               /* short centred text blocks */
+  --hairline: 1px;               /* decorative borders */
+  --focus-ring: 2px;
+  --icon-stroke: 1.75;
+  --icon-stroke-active: 2.25;
+
   /* ---------- shape ---------- */
   --r-inner: 8px;
   --r-control: 12px;             /* buttons, inputs */

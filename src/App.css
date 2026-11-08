@@ -1,6 +1,6 @@
 .app-main {
   margin: 0 auto;
-  max-width: 560px;
+  max-width: var(--content-max);
   padding: env(safe-area-inset-top) var(--s-4) 0;
   /* clear the fixed tab bar: link height + list padding + safe area + breathing room */
   padding-bottom: calc(var(--tap) + var(--s-3) + var(--s-2) + var(--s-2) + env(safe-area-inset-bottom) + var(--s-6));

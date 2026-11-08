@@ -6,11 +6,12 @@ Approved 2026-11-08. Source brief: the user's "Premium React Mobile Experience" 
 
 | Area | Decision |
 |---|---|
-| Stack | Migrate from classic-script JS to **React 19 + TypeScript + Vite**. Hash routing (keeps `#ch1`-style links). |
-| Motion | **Motion for React**. Replace GSAP in the Pixi engine with Motion's `animate` (one animation library). |
+| Stack | Migrate from classic-script JS to **React 19 + TypeScript + Vite**. Hash routing (keeps `#ch1`-style links). Vite stays on 7, so the React plugin is `@vitejs/plugin-react` 5.x (6.x needs Vite 8; upgrading is a separate change). *(2026-11-08)* |
+| Routes | `#` Home, `#learn`, `#progress`, `#settings`, `#ch1` `#ch2` `#bonus` → Chapter (Learn tab), `#<chapter>/<level>` → Level (focused). Unknown → Home. Settings highlights Home. *(Approved 2026-11-08.)* |
+| Motion | **Motion for React** via `LazyMotion` + `domAnimation` (`m.*` components; no layout animations, which cost 14 KB gzipped). Replace GSAP in the Pixi engine with Motion's `animate` in **Phase 4**, with the `approach` port: until then the engine serves only the old game. *(2026-11-08)* |
 | Icons | **Lucide React**, tree-shaken. |
-| Tokens | `src/styles/tokens.css` (palettes, type, space, shape, depth, motion). No other colour or size literals in components. |
-| Fonts | Plus Jakarta Sans (display), Satoshi (body), Noto Sans JP subset to the glyphs in `levels/` + `kb/`; fallbacks Hiragino Sans → Yu Gothic UI → system-ui. Self-hosted, fetched and subset in CI. Tabular numerals for all numbers. |
+| Tokens | `src/styles/tokens.css` (palettes, type, space, shape, depth, motion). No other colour or size literals in components. Layout and line tokens added in Phase 1: `--content-max`, `--measure`, `--hairline`, `--focus-ring`, `--icon-stroke(-active)`. A user theme choice (`data-theme`) needs a new storage key: decided with Phase 3 Settings. |
+| Fonts | Plus Jakarta Sans (display), Satoshi (body), Noto Sans JP subset to the glyphs in `levels/` + `kb/`; fallbacks Hiragino Sans → Yu Gothic UI → system-ui. Self-hosted, fetched and subset in CI. Tabular numerals for all numbers. Subset sources also include `src/` + `app/` (UI strings) and all printable ASCII. Subsets are generated on every build, not committed (the Noto source package adds ~1 s to CI install). **Satoshi: open, see Phase 1 status.** *(2026-11-08)* |
 | Navigation | Bottom tab bar: **Home · Learn · Progress**. Question screens are focused (no tab bar): close, progress bar, scene, sticky answer bar. |
 | Feedback | Bottom sheet over the answer bar: verdict (icon + word, not colour alone), explanation, KB citation badge, Next. |
 | Scope | Redesign only. No mock exam / timer (new feature; real test format must be sourced first). No invented statistics. |
@@ -58,7 +59,7 @@ engine/                       Pixi scene (unchanged API; GSAP → Motion)
 
 | Phase | State | Notes |
 |---|---|---|
-| 1 Scaffold | **Done** (2026-11-08) | See below. Open decisions listed; Satoshi not yet self-hosted. |
+| 1 Scaffold | **Done** (2026-11-08) | See below. Decisions resolved except Satoshi (licence; see below). |
 | 2 Logic extraction | **Done** (2026-11-08) | See below. |
 | 3–6 | Not started | |
 
@@ -67,36 +68,25 @@ engine/                       Pixi scene (unchanged API; GSAP → Motion)
 - **App beside the old game**: `app/index.html` → `src/main.tsx` → `src/App.tsx`, built by `vite.app.config.ts` into `dist/app/` (relative URLs, so it works under the Pages project path). Old game unchanged at `/`. `npm run dev` serves both (`/` old, `/app/` new). `npm run build` = kb check → clean `dist/` → engine → fonts + app → assemble (fails if either build is missing).
 - **Packages** (pinned in `package-lock.json`): react / react-dom 19.3.1, motion 14.10.1, lucide-react 1.70.0; dev: @vitejs/plugin-react 5.2.0, @types/react(-dom) 19.3.0, subset-font, @fontsource-variable/plus-jakarta-sans, @expo-google-fonts/noto-sans-jp.
 - **Routing**: `src/route.ts` (pure) + `src/useRoute.ts`. `#` Home, `#learn`, `#progress`, `#settings`, `#ch1` `#ch2` `#bonus` (same deep links as the old game) → Chapter under the Learn tab, `#<chapter>/<level>` → Level (focused, no tab bar). Unknown → Home. Focus moves to the new `h1` after navigation; `document.title` follows the route.
-- **Shell**: `BottomTabBar` (Home · Learn · Progress, `aria-current`, Lucide icons, Motion indicator), `PageHeader`, `IconLink`, `EmptyState`. Every route renders a placeholder that names the phase that builds it and links to the same chapter in the old game. No content or statistics are invented.
+- **Shell**: `BottomTabBar` (Home · Learn · Progress, `aria-current`, Lucide icons, CSS highlight), `PageHeader`, `IconLink`, `EmptyState`. Every route renders a placeholder that names the phase that builds it and links to the same chapter in the old game. No content or statistics are invented.
 - **Tokens**: `tokens.css` unchanged; `base.css` applies them (background, text, fonts, tabular numerals on `body`, focus ring in `--primary`). Motion reads `--dur-*` / `--ease-*` from the tokens (`src/motion.ts`); `MotionConfig reducedMotion="user"`.
 - **Fonts**: `tools/fonts.mjs` runs on every app build (CI included) from npm packages: Plus Jakarta Sans variable (latin + latin-ext) and Noto Sans JP 400/700 subset to every character in `levels/`, `kb/`, `src/`, `app/` plus printable ASCII (420 glyphs, 84 KB per weight). Output `src/styles/fonts/` is git-ignored.
 - **src/logic**: not imported yet; Phase 1 has no game rules. Screens and mechanics must use it (no judging in components).
 - **Tests added**: `npm run test:app` (`tests/app/route.test.mjs`, 5 tests, `node:test`) and `tests/app_smoke.py` (Playwright, 390×844, reduced motion): tabs, deep links, focused route, unknown hash, focus after navigation, both fonts loaded, tabular numerals, light/dark `--bg`, no horizontal overflow, link to the old game, no console errors. Both are in CI. Mutation check: removing the fonts import or the `bonus` route fails both suites.
-- **Measured bundle** (gzip): app entry JS 122 KB (React + ReactDOM 67, Motion 51, Lucide 5.5, app code the rest), CSS 2.4 KB, fonts 218 KB (woff2). CI's bundle report now lists `dist/app/assets/*.js`.
+- **Measured bundle** (`gzip -9`, as CI reports it): app entry JS 104 KB with `LazyMotion` + `domAnimation` (118 KB with the full `motion` component; React + ReactDOM alone 67, Lucide 5.5), CSS 2.4 KB, fonts 218 KB (woff2). CI's bundle report lists `dist/app/assets/*.js`.
 
-### Phase 1: open decisions (deviations or gaps; not resolved silently)
+### Phase 1: decisions
 
-1. **Satoshi is not self-hosted.** Not on npm; Fontshare was unreachable from the dev session; the licence terms for committing its files to a public repo were not checked. Effect: body Latin text renders in Noto Sans JP Subset (next in the stack). Options: (a) fetch it in a CI workflow like `signs.yml` after confirming the licence allows it; (b) replace it with an OFL face available on npm; (c) accept Noto Sans JP for body text.
-2. **@vitejs/plugin-react 5.2.0, not 6.x.** 6.x requires Vite 8; the repo is on Vite 7. Kept Vite 7 so the engine build is untouched. A Vite 8 upgrade is a separate change.
-3. **Bundle is above the doc's estimate.** "~70 KB for React + ReactDOM + Motion" is wrong: React + ReactDOM alone is 67 KB. Option: `LazyMotion` + `domAnimation` cuts Motion to 37 KB (−14 KB) but drops layout animations, so the tab indicator would become a CSS transition.
-4. **GSAP → Motion in the engine is not done.** No phase owns it. The engine only runs inside the old game, which must keep passing e2e until Phase 5. Proposed: do it with the `approach` port in Phase 4.
-5. **Route shapes beyond `#ch1`/`#ch2`/`#bonus` were chosen here** (`#learn`, `#progress`, `#settings`, `#<chapter>/<level>`; Settings highlights Home). Confirm or change before Phase 3 links to them.
-6. **Noto subset sources include `src/` and `app/`** (UI strings) and all printable ASCII, not only `levels/` + `kb/`. Without this, Japanese UI text and Latin text in the fallback face would mix fonts per glyph.
-7. **Size literals not covered by tokens**: 1px hairline borders, 560px content width, 36ch text measure, 2px focus ring, icon stroke widths. Option: add `--hairline`, `--content-max`, `--focus-ring` to `tokens.css` (left unedited because it is the approved file).
-8. **Theme choice has no UI or storage.** Tokens support `data-theme`; persisting a choice needs a new storage key, which is outside the preserved-keys list. Decide with Phase 3 Settings.
-9. **Noto Sans JP source is a 52 MB (unpacked) dev dependency** (full TTFs, OFL). It adds to `npm ci` time. Alternative: commit the generated subsets and regenerate only when content changes.
+Resolved 2026-11-08 (approved by the user) and recorded in the Decisions table: plugin-react 5.x on Vite 7; route shapes; LazyMotion (app entry measured below); GSAP → Motion moved to Phase 4; Noto subset sources; layout tokens; theme choice deferred to Phase 3; font subsets stay generated in CI (measured: `npm ci` 3 s → 4 s with the Noto package, so committing subsets is not worth it).
 
-### Phase 2: what exists
-
-- `src/logic/`: pure TypeScript, no DOM. `chapter1.ts` (sort, plate, signal, stoppos, bans, approach, tf), `chapter2.ts` (lanes, kerb, route choices), `bonus.ts` (match, build), `run.ts` (order, first-try scoring, review queue), `track.ts` (same storage keys, shapes and item-key hash), `cite.ts` (citation data), `label.ts`. Type-only syntax (`erasableSyntaxOnly`), so Node runs it directly.
-- Parity is proven, not assumed: `tools/golden-old.py` drives the **old UI** in Chromium and records its verdict and explanation for every item × every answer a player can give (967 answers over 176 items), plus tracking storage after a scripted answer sequence, citations for every rule, and the e2e suite's drawn routes. `tests/logic/golden.json` holds the results with its own copy of each item and the KB, so it outlives the old app. `tests/logic/golden.test.mjs` requires byte-identical explanations.
-- `tests/logic/run.test.mjs` replays the e2e expectations for scoring (cards = n (+1 review), score = n (−1 review)) and checks order, retry, requeue, Next/Finish, match options and build tiles.
-- Mutation check run once: altering the stop window, item hash, first-try rule, review rule, kerb hold zone or citation filter each fails the suite.
-- Explanations stay HTML strings (with `<b>`, `<ruby>`) exactly as before; the React layer renders them. The old "Listen" button is no longer inside the text: `judgeMatch`/`judgeBuild` return `listen` (text to speak) instead.
-- Known quirk kept for parity: when storage throws (private mode), a save is treated as "storage full" and drops the oldest half of the sessions, so in-memory history empties after each answer.
+**Open: Satoshi.** The Fontshare Free Font EULA (Indian Type Foundry, last updated 22 March 2021) allows web use, but section 02 forbids "uploading them in a public server" and transmitting the fonts "over the Internet in font serving" without ITF's written consent; its sanctioned web route is delivery from ITF's servers. So it cannot be committed to this public repo or self-hosted from Pages without that consent. Body Latin text currently uses Noto Sans JP Subset (next in the stack). Choices:
+1. Keep Noto Sans JP for body text (no change; Latin and Japanese match).
+2. Replace Satoshi with an OFL face self-hosted from npm (a design choice).
+3. Load Satoshi from Fontshare's servers (breaks "self-hosted"; third-party request on every visit).
+4. Ask ITF for written consent to self-host.
 
 ## Known risks
 
 - Rewriting 13 mechanics: mitigated by porting the e2e suite first and keeping the old app live until parity.
 - `file://` use ends (build step required).
-- Bundle: React + ReactDOM + Motion adds roughly 70 KB gzipped (estimate; measure in CI).
+- Bundle: measured 2026-11-08, React + ReactDOM alone are 67 KB gzipped (the earlier ~70 KB estimate for React + Motion was low). See the Phase 1 bundle line for the app entry.
