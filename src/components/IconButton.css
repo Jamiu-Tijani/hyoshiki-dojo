@@ -1,0 +1,14 @@
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  color: var(--text);
+  border-radius: var(--r-pill);
+  transition: background var(--dur-state) var(--ease-move), transform var(--dur-press) var(--ease-move);
+}
+.icon-button:hover { background: var(--sunken); }
+.icon-button:active { transform: scale(var(--press-scale)); }
+.icon-button svg { width: var(--s-6); height: var(--s-6); }

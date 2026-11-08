@@ -1,0 +1,43 @@
+.tabbar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 10;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbar ul {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 auto;
+  padding: var(--s-1) var(--s-2);
+  max-width: 560px;
+  list-style: none;
+}
+.tabbar-link {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-1);
+  min-height: calc(var(--tap) + var(--s-3));
+  padding: var(--s-1) 0;
+  color: var(--text-3);
+  text-decoration: none;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tracking-label);
+  border-radius: var(--r-control);
+  transition: color var(--dur-state) var(--ease-move), transform var(--dur-press) var(--ease-move);
+}
+.tabbar-link:active { transform: scale(var(--press-scale)); }
+.tabbar-link[aria-current="page"] { color: var(--primary); font-weight: var(--fw-bold); }
+.tabbar-icon { position: relative; width: var(--s-6); height: var(--s-6); }
+.tabbar-label { position: relative; }
+.tabbar-indicator {
+  position: absolute;
+  inset: var(--s-1) var(--s-4);
+  background: var(--primary-tint);
+  border-radius: var(--r-control);
+}

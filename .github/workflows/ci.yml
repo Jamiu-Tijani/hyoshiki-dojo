@@ -23,6 +23,8 @@ jobs:
         run: npm run typecheck
       - name: Logic tests (src/logic against the old game's recorded decisions)
         run: npm run test:logic
+      - name: App unit tests (routing)
+        run: npm run test:app
       - name: Build
         run: npm run build
       - name: Bundle report
@@ -30,7 +32,7 @@ jobs:
           echo "### Bundle" >> $GITHUB_STEP_SUMMARY
           echo '| file | raw KB | gzip KB |' >> $GITHUB_STEP_SUMMARY
           echo '|---|---|---|' >> $GITHUB_STEP_SUMMARY
-          for f in dist/engine/*.js; do echo "| $(basename $f) | $(( $(wc -c <$f)/1024 )) | $(( $(gzip -9 -c $f | wc -c)/1024 )) |" | tee -a $GITHUB_STEP_SUMMARY; done
+          for f in dist/engine/*.js dist/app/assets/*.js; do echo "| $(basename $f) | $(( $(wc -c <$f)/1024 )) | $(( $(gzip -9 -c $f | wc -c)/1024 )) |" | tee -a $GITHUB_STEP_SUMMARY; done
       - uses: actions/upload-artifact@v4
         with:
           name: site
@@ -50,6 +52,11 @@ jobs:
           python -m http.server 4174 --directory dist >/dev/null 2>&1 &
           sleep 1
           HD_URL=http://127.0.0.1:4174/ python tests/e2e.py --no-engine
+      - name: React app smoke (dist/app)
+        run: |
+          python -m http.server 4175 --directory dist >/dev/null 2>&1 &
+          sleep 1
+          HD_URL=http://127.0.0.1:4175/ python tests/app_smoke.py
 
   # Publishes dist/ to GitHub Pages on pushes to main.
   # Requires Settings → Pages → Build and deployment → Source: "GitHub Actions".

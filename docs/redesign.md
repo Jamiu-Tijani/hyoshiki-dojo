@@ -58,9 +58,33 @@ engine/                       Pixi scene (unchanged API; GSAP → Motion)
 
 | Phase | State | Notes |
 |---|---|---|
-| 1 Scaffold | Not started | Blocked in sessions without npm (React, Vite plugin, Motion, Lucide, fonts). |
+| 1 Scaffold | **Done** (2026-11-08) | See below. Open decisions listed; Satoshi not yet self-hosted. |
 | 2 Logic extraction | **Done** (2026-11-08) | See below. |
 | 3–6 | Not started | |
+
+### Phase 1: what exists
+
+- **App beside the old game**: `app/index.html` → `src/main.tsx` → `src/App.tsx`, built by `vite.app.config.ts` into `dist/app/` (relative URLs, so it works under the Pages project path). Old game unchanged at `/`. `npm run dev` serves both (`/` old, `/app/` new). `npm run build` = kb check → clean `dist/` → engine → fonts + app → assemble (fails if either build is missing).
+- **Packages** (pinned in `package-lock.json`): react / react-dom 19.3.1, motion 14.10.1, lucide-react 1.70.0; dev: @vitejs/plugin-react 5.2.0, @types/react(-dom) 19.3.0, subset-font, @fontsource-variable/plus-jakarta-sans, @expo-google-fonts/noto-sans-jp.
+- **Routing**: `src/route.ts` (pure) + `src/useRoute.ts`. `#` Home, `#learn`, `#progress`, `#settings`, `#ch1` `#ch2` `#bonus` (same deep links as the old game) → Chapter under the Learn tab, `#<chapter>/<level>` → Level (focused, no tab bar). Unknown → Home. Focus moves to the new `h1` after navigation; `document.title` follows the route.
+- **Shell**: `BottomTabBar` (Home · Learn · Progress, `aria-current`, Lucide icons, Motion indicator), `PageHeader`, `IconLink`, `EmptyState`. Every route renders a placeholder that names the phase that builds it and links to the same chapter in the old game. No content or statistics are invented.
+- **Tokens**: `tokens.css` unchanged; `base.css` applies them (background, text, fonts, tabular numerals on `body`, focus ring in `--primary`). Motion reads `--dur-*` / `--ease-*` from the tokens (`src/motion.ts`); `MotionConfig reducedMotion="user"`.
+- **Fonts**: `tools/fonts.mjs` runs on every app build (CI included) from npm packages: Plus Jakarta Sans variable (latin + latin-ext) and Noto Sans JP 400/700 subset to every character in `levels/`, `kb/`, `src/`, `app/` plus printable ASCII (420 glyphs, 84 KB per weight). Output `src/styles/fonts/` is git-ignored.
+- **src/logic**: not imported yet; Phase 1 has no game rules. Screens and mechanics must use it (no judging in components).
+- **Tests added**: `npm run test:app` (`tests/app/route.test.mjs`, 5 tests, `node:test`) and `tests/app_smoke.py` (Playwright, 390×844, reduced motion): tabs, deep links, focused route, unknown hash, focus after navigation, both fonts loaded, tabular numerals, light/dark `--bg`, no horizontal overflow, link to the old game, no console errors. Both are in CI. Mutation check: removing the fonts import or the `bonus` route fails both suites.
+- **Measured bundle** (gzip): app entry JS 122 KB (React + ReactDOM 67, Motion 51, Lucide 5.5, app code the rest), CSS 2.4 KB, fonts 218 KB (woff2). CI's bundle report now lists `dist/app/assets/*.js`.
+
+### Phase 1: open decisions (deviations or gaps; not resolved silently)
+
+1. **Satoshi is not self-hosted.** Not on npm; Fontshare was unreachable from the dev session; the licence terms for committing its files to a public repo were not checked. Effect: body Latin text renders in Noto Sans JP Subset (next in the stack). Options: (a) fetch it in a CI workflow like `signs.yml` after confirming the licence allows it; (b) replace it with an OFL face available on npm; (c) accept Noto Sans JP for body text.
+2. **@vitejs/plugin-react 5.2.0, not 6.x.** 6.x requires Vite 8; the repo is on Vite 7. Kept Vite 7 so the engine build is untouched. A Vite 8 upgrade is a separate change.
+3. **Bundle is above the doc's estimate.** "~70 KB for React + ReactDOM + Motion" is wrong: React + ReactDOM alone is 67 KB. Option: `LazyMotion` + `domAnimation` cuts Motion to 37 KB (−14 KB) but drops layout animations, so the tab indicator would become a CSS transition.
+4. **GSAP → Motion in the engine is not done.** No phase owns it. The engine only runs inside the old game, which must keep passing e2e until Phase 5. Proposed: do it with the `approach` port in Phase 4.
+5. **Route shapes beyond `#ch1`/`#ch2`/`#bonus` were chosen here** (`#learn`, `#progress`, `#settings`, `#<chapter>/<level>`; Settings highlights Home). Confirm or change before Phase 3 links to them.
+6. **Noto subset sources include `src/` and `app/`** (UI strings) and all printable ASCII, not only `levels/` + `kb/`. Without this, Japanese UI text and Latin text in the fallback face would mix fonts per glyph.
+7. **Size literals not covered by tokens**: 1px hairline borders, 560px content width, 36ch text measure, 2px focus ring, icon stroke widths. Option: add `--hairline`, `--content-max`, `--focus-ring` to `tokens.css` (left unedited because it is the approved file).
+8. **Theme choice has no UI or storage.** Tokens support `data-theme`; persisting a choice needs a new storage key, which is outside the preserved-keys list. Decide with Phase 3 Settings.
+9. **Noto Sans JP source is a 52 MB (unpacked) dev dependency** (full TTFs, OFL). It adds to `npm ci` time. Alternative: commit the generated subsets and regenerate only when content changes.
 
 ### Phase 2: what exists
 

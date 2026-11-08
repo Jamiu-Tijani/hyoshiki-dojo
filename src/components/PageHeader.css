@@ -1,0 +1,9 @@
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-6) 0 var(--s-4);
+}
+.page-header-titles { flex: 1; min-width: 0; }
+.page-header h1 { font-size: var(--fs-30); }
+.page-header-jp { margin-top: var(--s-1); color: var(--text-2); font-size: var(--fs-15); }
